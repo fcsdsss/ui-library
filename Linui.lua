@@ -15,7 +15,7 @@
 ]]
 
 -- 2000+ Lines, crazy isn't it?
--- Version: 1.5 (Interaction & UX Refinement)
+-- Version: 2.1.1 (UI Polish)
 STRING = "Fixes:"
 --[[
 	* Fixed UI click-related bugs
@@ -30,13 +30,15 @@ STRING = "Fixes:"
 
 STRING = "Updates:"
 --[[
+    * Adjusted the minimized bar's drag handle to 3/10 of its width.
+    * Implemented an optimized minimized state: a draggable, semi-transparent bar.
+    * Restored the Minimize (yellow) button to trigger the new minimized state.
+    * The global toggle key now intelligently switches between open and minimized states.
+    * Added Core Tab functionality; content now displays in the main center panel.
+    * Enlarged the Exit (red) and Fullscreen buttons for better usability.
 	* Added Colorpicker
     * Patched for mobile experience (Slider, UI hiding, and smooth tilting)
-    * Added independent Fullscreen button with a clearer icon
-    * Re-purposed Minimize (yellow) button to toggle transparency (fade in/out)
-    * Replaced old minimize logic with a WindUI-style draggable toggle bound to the global ToggleKey
     * Replaced resizer handle with a corner triangle
-    * Increased size of top-right buttons for better mobile usability
 ]]
 
 local __original_require = require
@@ -190,8 +192,8 @@ Examples.Parent = Part
 Cache.add(Objects)
 Cache.add(Part)
 
-local UI, Frame, OpenButton = nil, nil, nil;
-local Config = { ["Keys"] = {}, ["Cooldowns"] = {}, ["UI"] = {}, Breathing = true, ToggleKey = Enum.KeyCode.RightShift }
+local UI, Frame, OpenButton, MinimizedBar = nil, nil, nil, nil;
+local Config = { ["Keys"] = {}, ["Cooldowns"] = {}, ["UI"] = {}, Breathing = true, ToggleKey = Enum.KeyCode.RightShift, ActiveTab = nil }
 local Library = { }
 
 local function HandleEvent(BindableEvent, callback)
@@ -257,12 +259,12 @@ do -- Main UI
     Frame = Instance.new("ImageButton")
 	Frame["BorderSizePixel"] = 0
 	Frame["Name"] = "Frame"
-	Frame["BackgroundColor3"] = Color3.fromRGB(30.00000011175871, 30.00000011175871, 30.00000011175871)
+	Frame["BackgroundColor3"] = Color3.fromRGB(30, 30, 30)
 	Frame["Image"] = "rbxasset://textures/ui/GuiImagePlaceholder.png"
-	Frame["Size"] = UDim2.new(0.8960000276565552, 0, 1, 0)
+	Frame["Size"] = UDim2.new(1, 0, 1, 0) -- Full size container
 	Frame["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	Frame["ImageTransparency"] = 1
-	Frame["Position"] = UDim2.new(0.052000001072883606, 0, 0, 0)
+	Frame["Position"] = UDim2.new(0, 0, 0, 0)
 	Frame["BackgroundTransparency"] = 1
 	Frame["Parent"] = UI
 	
@@ -271,229 +273,174 @@ do -- Main UI
 	UIAspectRatioConstraint["Parent"] = Frame
 	
 	local UICorner = Instance.new("UICorner")
-	UICorner["CornerRadius"] = UDim.new(0, 0)
+	UICorner["CornerRadius"] = UDim.new(0, 8) -- Rounded corners
 	UICorner["Parent"] = Frame
 	
-	local Main = Instance.new("ImageLabel")
-	Main["BorderSizePixel"] = 0
-	Main["ScaleType"] = Enum.ScaleType.Tile
-	Main["BackgroundColor3"] = Color3.fromRGB(16.000000946223736, 16.000000946223736, 16.000000946223736)
-	Main["Name"] = "Main"
-	Main["ImageTransparency"] = 1
-	Main["Image"] = "rbxassetid://14228549334"
-	Main["Size"] = UDim2.new(0.4762379229068756, 0, 0.9121286869049072, 0)
-	Main["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	Main["ResampleMode"] = Enum.ResamplerMode.Pixelated
-	Main["BackgroundTransparency"] = 0.20000000298023224
-	Main["Position"] = UDim2.new(0.2609618008136749, 0, 0.043316829949617386, 0)
-	Main["Parent"] = Frame
+    -- Main container for all UI elements, allowing for easy hiding/showing
+    local MainContainer = Instance.new("Frame")
+    MainContainer.Name = "MainContainer"
+    MainContainer.Size = UDim2.new(1,0,1,0)
+    MainContainer.BackgroundTransparency = 1
+    MainContainer.Parent = Frame
+    
+	local MainPanel = Instance.new("ImageLabel")
+	MainPanel["BorderSizePixel"] = 0
+	MainPanel["ScaleType"] = Enum.ScaleType.Slice
+    MainPanel["SliceCenter"] = Rect.new(10, 10, 118, 118)
+	MainPanel["BackgroundColor3"] = Color3.fromRGB(16, 16, 16)
+	MainPanel["Name"] = "MainPanel"
+	MainPanel["Image"] = "rbxassetid://14228549334"
+	MainPanel["Size"] = UDim2.new(1, -10, 1, -10) -- Padding
+	MainPanel["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	MainPanel["BackgroundTransparency"] = 0.2
+	MainPanel["Position"] = UDim2.new(0.5, 0, 0.5, 0)
+    MainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+	MainPanel["Parent"] = MainContainer
+
+    local MainPanelCorner = Instance.new("UICorner")
+    MainPanelCorner.CornerRadius = UDim.new(0, 6)
+    MainPanelCorner.Parent = MainPanel
+
+	local LeftPanel = Instance.new("Frame")
+	LeftPanel["BorderSizePixel"] = 0
+	LeftPanel["BackgroundColor3"] = Color3.fromRGB(10, 10, 10)
+	LeftPanel["Name"] = "LeftPanel"
+	LeftPanel["Size"] = UDim2.new(0.25, 0, 1, -45)
+	LeftPanel["BackgroundTransparency"] = 0.4
+	LeftPanel["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	LeftPanel["Position"] = UDim2.new(0, 5, 1, -5)
+    LeftPanel.AnchorPoint = Vector2.new(0, 1)
+	LeftPanel["Parent"] = MainPanel
+    
+    local LeftPanelCorner = Instance.new("UICorner")
+    LeftPanelCorner.CornerRadius = UDim.new(0, 4)
+    LeftPanelCorner.Parent = LeftPanel
+
+	local TabsContainer = Instance.new("ScrollingFrame")
+	TabsContainer["Active"] = true
+	TabsContainer["BorderSizePixel"] = 0
+	TabsContainer["Name"] = "TabsContainer"
+	TabsContainer["Size"] = UDim2.new(1, -10, 1, -10)
+	TabsContainer["ScrollBarImageColor3"] = Color3.fromRGB(255, 255, 255)
+	TabsContainer["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	TabsContainer["ScrollBarThickness"] = 4
+	TabsContainer["BackgroundTransparency"] = 1
+	TabsContainer["Position"] = UDim2.new(0.5, 0, 0.5, 0)
+    TabsContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	TabsContainer["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
+	TabsContainer["Parent"] = LeftPanel
 	
+	local UIListLayout_Tabs = Instance.new("UIListLayout")
+	UIListLayout_Tabs["HorizontalAlignment"] = Enum.HorizontalAlignment.Center
+	UIListLayout_Tabs["Padding"] = UDim.new(0, 5)
+	UIListLayout_Tabs["SortOrder"] = Enum.SortOrder.LayoutOrder
+	UIListLayout_Tabs["Parent"] = TabsContainer
+	
+	local ContentPanel = Instance.new("Frame")
+	ContentPanel["BorderSizePixel"] = 0
+	ContentPanel["BackgroundColor3"] = Color3.fromRGB(10, 10, 10)
+	ContentPanel["Name"] = "ContentPanel"
+	ContentPanel["Size"] = UDim2.new(0.75, -15, 1, -45)
+	ContentPanel["BackgroundTransparency"] = 0.4
+	ContentPanel["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	ContentPanel["Position"] = UDim2.new(1, -5, 1, -5)
+    ContentPanel.AnchorPoint = Vector2.new(1, 1)
+	ContentPanel["Parent"] = MainPanel
+
+    local ContentPanelCorner = Instance.new("UICorner")
+    ContentPanelCorner.CornerRadius = UDim.new(0, 4)
+    ContentPanelCorner.Parent = ContentPanel
+
+    -- Header (Top Bar)
+    local Header = Instance.new("Frame")
+    Header.Name = "Header"
+    Header.Size = UDim2.new(1, 0, 0, 35)
+    Header.Position = UDim2.new(0,0,0,0)
+    Header.BackgroundTransparency = 1
+    Header.Parent = MainPanel
+
 	local PlayerName = Instance.new("TextLabel")
 	PlayerName["TextWrapped"] = true
 	PlayerName["BorderSizePixel"] = 0
 	PlayerName["RichText"] = true
 	PlayerName["Name"] = "PlayerName"
-	PlayerName["TextScaled"] = true
 	PlayerName["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	PlayerName["FontFace"] = Font.new("rbxassetid://12187370000", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	PlayerName["Size"] = UDim2.new(0.21115538477897644, 0, 0.06368563324213028, 0)
-	PlayerName["Position"] = UDim2.new(0.39319005608558655, 0, 0.017617134377360344, 0)
+	PlayerName["FontFace"] = Font.new("rbxassetid://12187370000", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+	PlayerName["Size"] = UDim2.new(0.3, 0, 0.8, 0)
+	PlayerName["Position"] = UDim2.new(0.02, 0, 0.5, 0)
+    PlayerName.AnchorPoint = Vector2.new(0, 0.5)
 	PlayerName["TextColor3"] = Color3.fromRGB(255, 255, 255)
 	PlayerName["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	PlayerName["Text"] = "Linen"
+	PlayerName["Text"] = "Linui"
 	PlayerName["BackgroundTransparency"] = 1
-	PlayerName["TextSize"] = 20
-	PlayerName["Parent"] = Main
+	PlayerName["TextSize"] = 22
+    PlayerName.TextXAlignment = Enum.TextXAlignment.Left
+	PlayerName["Parent"] = Header
 	
-	local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
-	UITextSizeConstraint["MaxTextSize"] = 20
-	UITextSizeConstraint["Parent"] = PlayerName
-	
-	local HoverHandler = Instance.new("TextButton")
-	HoverHandler["TextWrapped"] = true
-	HoverHandler["BorderSizePixel"] = 0
-	HoverHandler["Name"] = "HoverHandler"
-	HoverHandler["TextSize"] = 14
-	HoverHandler["TextScaled"] = true
-	HoverHandler["BackgroundColor3"] = Color3.fromRGB(30.00000011175871, 30.00000011175871, 30.00000011175871)
-	HoverHandler["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	HoverHandler["Size"] = UDim2.new(1.106918215751648, 0, 1.0638298988342285, 0)
-	HoverHandler["Position"] = UDim2.new(-0.050314463675022125, 0, -0.06382978707551956, 0)
-	HoverHandler["TextColor3"] = Color3.fromRGB(0, 0, 0)
-	HoverHandler["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	HoverHandler["Text"] = ""
-	HoverHandler["Font"] = Enum.Font.SourceSans
-	HoverHandler["BackgroundTransparency"] = 1
-	HoverHandler["Parent"] = PlayerName
-	
-	local UITextSizeConstraint_1 = Instance.new("UITextSizeConstraint")
-	UITextSizeConstraint_1["MaxTextSize"] = 14
-	UITextSizeConstraint_1["Parent"] = HoverHandler
-	
-	local Line = Instance.new("Frame")
-	Line["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	Line["Name"] = "Line"
-	Line["Size"] = UDim2.new(0.29216468334198, 0, 0.0013550135772675276, 0)
-	Line["BorderColor3"] = Color3.fromRGB(255, 255, 255)
-	Line["Position"] = UDim2.new(0.3533494770526886, 0, 0.0704626515507698, 0)
-	Line["Parent"] = Main
-	
-	local UICorner_1 = Instance.new("UICorner")
-	UICorner_1["CornerRadius"] = UDim.new(0, 0)
-	UICorner_1["Parent"] = Main
-	
-	local UIAspectRatioConstraint_1 = Instance.new("UIAspectRatioConstraint")
-	UIAspectRatioConstraint_1["AspectRatio"] = 0.9137048125267029
-	UIAspectRatioConstraint_1["Parent"] = Main
-	
-	local Left = Instance.new("Frame")
-	Left["BorderSizePixel"] = 0
-	Left["BackgroundColor3"] = Color3.fromRGB(10.000000353902578, 10.000000353902578, 10.000000353902578)
-	Left["Name"] = "Left"
-	Left["Size"] = UDim2.new(0.2501583695411682, 0, 0.913366436958313, 0)
-	Left["BackgroundTransparency"] = 1
-	Left["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	Left["Position"] = UDim2.new(0.004263971466571093, 0, 0.043316785246133804, 0)
-	Left["Parent"] = Frame
-	
-	local Frame_1 = Instance.new("ScrollingFrame")
-	Frame_1["Active"] = true
-	Frame_1["BorderSizePixel"] = 0
-	Frame_1["Name"] = "Frame"
-	Frame_1["Size"] = UDim2.new(1, 0, 0.9937794804573059, 0)
-	Frame_1["ScrollBarImageColor3"] = Color3.fromRGB(0, 0, 0)
-	Frame_1["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	Frame_1["ScrollBarThickness"] = 0
-	Frame_1["BackgroundTransparency"] = 1
-	Frame_1["Position"] = UDim2.new(-8.628197178950359e-08, 0, -4.135500475399567e-08, 0)
-	Frame_1["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	Frame_1["Parent"] = Left
-	
+    -- Container for top-right buttons
+    local ButtonContainer = Instance.new("Frame")
+    ButtonContainer.Name = "ButtonContainer"
+    ButtonContainer.Size = UDim2.new(0, 100, 1, 0)
+    ButtonContainer.Position = UDim2.new(1, -5, 0.5, 0)
+    ButtonContainer.AnchorPoint = Vector2.new(1, 0.5)
+    ButtonContainer.BackgroundTransparency = 1
+    ButtonContainer.Parent = Header
 
-	local UIAspectRatioConstraint_2 = Instance.new("UIAspectRatioConstraint")
-	UIAspectRatioConstraint_2["AspectRatio"] = 0.48230084776878357
-	UIAspectRatioConstraint_2["Parent"] = Frame_1
-	
-	local UIListLayout = Instance.new("UIListLayout")
-	UIListLayout["HorizontalAlignment"] = Enum.HorizontalAlignment.Center
-	UIListLayout["Padding"] = UDim.new(0, 2)
-	UIListLayout["SortOrder"] = Enum.SortOrder.LayoutOrder
-	UIListLayout["Parent"] = Frame_1
-	
-	local UICorner_2 = Instance.new("UICorner")
-	UICorner_2["CornerRadius"] = UDim.new(0.029999999329447746, 0)
-	UICorner_2["Parent"] = Left
-	
-	local UIAspectRatioConstraint_3 = Instance.new("UIAspectRatioConstraint")
-	UIAspectRatioConstraint_3["AspectRatio"] = 0.4793006479740143
-	UIAspectRatioConstraint_3["Parent"] = Left
-	
-	local Right = Instance.new("Frame")
-	Right["BorderSizePixel"] = 0
-	Right["BackgroundColor3"] = Color3.fromRGB(10.000000353902578, 10.000000353902578, 10.000000353902578)
-	Right["Name"] = "Right"
-	Right["Size"] = UDim2.new(0.2501583397388458, 0, 0.9133663773536682, 0)
-	Right["BackgroundTransparency"] = 0.4000000059604645
-	Right["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	Right["Position"] = UDim2.new(0.7447751760482788, 0, 0.043316829949617386, 0)
-	Right["Parent"] = Frame
-	
-	local Frame_2 = Instance.new("ScrollingFrame")
-	Frame_2["Active"] = true
-	Frame_2["BorderSizePixel"] = 0
-	Frame_2["Name"] = "Frame"
-	Frame_2["Size"] = UDim2.new(0.9244498014450073, 0, 0.9186992049217224, 0)
-	Frame_2["ScrollBarImageColor3"] = Color3.fromRGB(0, 0, 0)
-	Frame_2["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	Frame_2["ScrollBarThickness"] = 6
-	Frame_2["BackgroundTransparency"] = 1
-	Frame_2["Position"] = UDim2.new(0.039578892290592194, 0, 0.06910569220781326, 0)
-	Frame_2["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	Frame_2["Parent"] = Right
+    local ButtonLayout = Instance.new("UIListLayout")
+    ButtonLayout.FillDirection = Enum.FillDirection.Horizontal
+    ButtonLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    ButtonLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    ButtonLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ButtonLayout.Padding = UDim.new(0, 8)
+    ButtonLayout.Parent = ButtonContainer
 
-	local UIListLayout_1 = Instance.new("UIListLayout")
-	UIListLayout_1["HorizontalAlignment"] = Enum.HorizontalAlignment.Center
-	UIListLayout_1["Padding"] = UDim.new(0, 4)
-	UIListLayout_1["SortOrder"] = Enum.SortOrder.LayoutOrder
-	UIListLayout_1["Parent"] = Frame_2
-	
-	local UIAspectRatioConstraint_4 = Instance.new("UIAspectRatioConstraint")
-	UIAspectRatioConstraint_4["AspectRatio"] = 0.48230084776878357
-	UIAspectRatioConstraint_4["Parent"] = Frame_2
-	
     -- [[ FEATURE: Fullscreen Button ]]
     local FULLSCREEN = Instance.new("ImageButton")
     FULLSCREEN.Name = "FULLSCREEN"
+    FULLSCREEN.LayoutOrder = 1
     FULLSCREEN.BackgroundTransparency = 1
-    FULLSCREEN.Size = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
-    FULLSCREEN.Position = UDim2.new(0.76, 0, 0.008, 0)
+    FULLSCREEN.Size = UDim2.new(0, 18, 0, 18) -- Enlarged
     FULLSCREEN.Image = "http://www.roblox.com/asset/?id=284412499" -- Expand icon
-    FULLSCREEN.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    FULLSCREEN.Parent = Right
+    FULLSCREEN.ImageColor3 = Color3.fromRGB(220, 220, 220)
+    FULLSCREEN.Parent = ButtonContainer
 	
 	local MINIMIZE = Instance.new("TextButton")
-	MINIMIZE["TextWrapped"] = true
 	MINIMIZE["BorderSizePixel"] = 0
+    MINIMIZE.LayoutOrder = 2
 	MINIMIZE["Name"] = "MINIMIZE"
-	MINIMIZE["TextSize"] = 14
-	MINIMIZE["TextScaled"] = true
 	MINIMIZE["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	MINIMIZE["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	MINIMIZE["Size"] = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
-	MINIMIZE["Position"] = UDim2.new(0.84, 0, 0.008, 0)
+	MINIMIZE["Size"] = UDim2.new(0, 18, 0, 18) -- Enlarged
 	MINIMIZE["TextColor3"] = Color3.fromRGB(0, 0, 0)
 	MINIMIZE["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	MINIMIZE["Text"] = ""
-	MINIMIZE["Font"] = Enum.Font.SourceSans
-	MINIMIZE["Parent"] = Right
-	
-	local UITextSizeConstraint_2 = Instance.new("UITextSizeConstraint")
-	UITextSizeConstraint_2["MaxTextSize"] = 14
-	UITextSizeConstraint_2["Parent"] = MINIMIZE
+	MINIMIZE["Parent"] = ButtonContainer
 	
 	local UICorner_3 = Instance.new("UICorner")
 	UICorner_3["CornerRadius"] = UDim.new(1, 0)
 	UICorner_3["Parent"] = MINIMIZE
 	
 	local UIGradient = Instance.new("UIGradient")
-	UIGradient["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(145.00000655651093, 145.00000655651093, 10.000000353902578)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(191.00000381469727, 143.00000667572021, 0)) })
+	UIGradient["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 80)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 190, 0)) })
 	UIGradient["Parent"] = MINIMIZE
 	
 	local EXIT = Instance.new("TextButton")
-	EXIT["TextWrapped"] = true
 	EXIT["BorderSizePixel"] = 0
+    EXIT.LayoutOrder = 3
 	EXIT["Name"] = "EXIT"
-	EXIT["TextSize"] = 14
-	EXIT["TextScaled"] = true
 	EXIT["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	EXIT["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	EXIT["Size"] = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
-	EXIT["Position"] = UDim2.new(0.92, 0, 0.008, 0)
+	EXIT["Size"] = UDim2.new(0, 18, 0, 18) -- Enlarged
 	EXIT["TextColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["Text"] = ""
-	EXIT["Font"] = Enum.Font.SourceSans
-	EXIT["Parent"] = Right
-	
-	local UITextSizeConstraint_3 = Instance.new("UITextSizeConstraint")
-	UITextSizeConstraint_3["MaxTextSize"] = 14
-	UITextSizeConstraint_3["Parent"] = EXIT
+	EXIT["Parent"] = ButtonContainer
 	
 	local UICorner_4 = Instance.new("UICorner")
 	UICorner_4["CornerRadius"] = UDim.new(1, 0)
 	UICorner_4["Parent"] = EXIT
 	
 	local UIGradient_1 = Instance.new("UIGradient")
-	UIGradient_1["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(145.00000655651093, 6.000000117346644, 8.000000473111868)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(191.00000381469727, 0, 0)) })
+	UIGradient_1["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(230, 40, 40)) })
 	UIGradient_1["Parent"] = EXIT
-	
-	local UICorner_5 = Instance.new("UICorner")
-	UICorner_5["CornerRadius"] = UDim.new(0.029999999329447746, 0)
-	UICorner_5["Parent"] = Right
-	
-	local UIAspectRatioConstraint_5 = Instance.new("UIAspectRatioConstraint")
-	UIAspectRatioConstraint_5["AspectRatio"] = 0.4793006479740143
-	UIAspectRatioConstraint_5["Parent"] = Right
 	
     -- [[ FEATURE: Resizer Handle (Triangle) ]]
     local ResizeHandle = Instance.new("ImageLabel")
@@ -503,15 +450,54 @@ do -- Main UI
     ResizeHandle.BackgroundTransparency = 1
     ResizeHandle.Rotation = 45
     ResizeHandle.AnchorPoint = Vector2.new(1, 1)
-    ResizeHandle.Position = UDim2.new(1, 5, 1, 5) -- Small offset from corner
-    ResizeHandle.Size = UDim2.new(0, 20, 0, 20)
+    ResizeHandle.Position = UDim2.new(1, 0, 1, 0) -- Stick to corner
+    ResizeHandle.Size = UDim2.new(0, 22, 0, 22)
     ResizeHandle.ZIndex = 10
     ResizeHandle.Parent = Frame
     
-	local UIAspectRatioConstraint_6 = Instance.new("UIAspectRatioConstraint")
-	UIAspectRatioConstraint_6["AspectRatio"] = 1.9428621530532837
-	UIAspectRatioConstraint_6["Parent"] = UI
-	
+	-- [[ FEATURE: Optimized Minimized Bar ]]
+    local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+    Cache.add(ScreenGui)
+    MinimizedBar = Instance.new("Frame", ScreenGui)
+    MinimizedBar.Size = UDim2.new(0, 200, 0, 35)
+    MinimizedBar.Position = UDim2.new(0.5, -100, 0, 15)
+    MinimizedBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    MinimizedBar.BackgroundTransparency = 0.2
+    MinimizedBar.Visible = false
+    MinimizedBar.ZIndex = 9999
+    MinimizedBar.ClipsDescendants = true
+
+    local mbCorner = Instance.new("UICorner", MinimizedBar)
+    mbCorner.CornerRadius = UDim.new(0, 6)
+    local mbStroke = Instance.new("UIStroke", MinimizedBar)
+    mbStroke.Color = Color3.fromRGB(80, 80, 80)
+    mbStroke.Thickness = 1.5
+
+    -- Draggable Handle (Left 3/10)
+    local DragHandle = Instance.new("Frame", MinimizedBar)
+    DragHandle.Size = UDim2.new(0.3, 0, 1, 0)
+    DragHandle.BackgroundTransparency = 1
+    DragHandle.Active = true
+    DragHandle.Draggable = true
+
+    -- Expand Button (Right 7/10)
+    local ExpandButton = Instance.new("TextButton", MinimizedBar)
+    ExpandButton.Size = UDim2.new(0.7, 0, 1, 0)
+    ExpandButton.Position = UDim2.new(0.3, 0, 0, 0)
+    ExpandButton.BackgroundTransparency = 1
+    ExpandButton.Text = "Expand"
+    ExpandButton.Font = Enum.Font.GothamSemibold
+    ExpandButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+    ExpandButton.TextSize = 16
+
+    local expandIcon = Instance.new("ImageLabel", ExpandButton)
+    expandIcon.Size = UDim2.new(0, 16, 0, 16)
+    expandIcon.Position = UDim2.new(1, -25, 0.5, 0)
+    expandIcon.AnchorPoint = Vector2.new(1, 0.5)
+    expandIcon.BackgroundTransparency = 1
+    expandIcon.Image = "http://www.roblox.com/asset/?id=1435223490" -- Up Arrow
+    expandIcon.ImageColor3 = Color3.fromRGB(220, 220, 220)
+    ExpandButton.Parent = MinimizedBar
 end
 
 do -- UI Elements
@@ -923,6 +909,25 @@ do -- UI Elements
 	Line["BorderColor3"] = Color3.fromRGB(255, 255, 255)
 	Line["Position"] = UDim2.new(0.353349506855011, 0, 0.07307261973619461, 0)
 	Line["Parent"] = Section
+
+	local TabExample = Instance.new("TextButton")
+    TabExample.Name = "TabExample"
+    TabExample.Size = UDim2.new(1, -10, 0, 35)
+    TabExample.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    TabExample.Text = "Tab"
+    TabExample.TextColor3 = Color3.fromRGB(200,200,200)
+    TabExample.Font = Enum.Font.GothamSemibold
+    TabExample.TextSize = 15
+    TabExample.Parent = Examples
+    
+    local TabCorner = Instance.new("UICorner", TabExample)
+    TabCorner.CornerRadius = UDim.new(0, 4)
+
+    local TabStroke = Instance.new("UIStroke", TabExample)
+    TabStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    TabStroke.Color = Color3.fromRGB(60,60,60)
+    TabStroke.Thickness = 1.5
+    TabStroke.Transparency = 0
 	
 	-------------------------------------------
 
@@ -1298,11 +1303,116 @@ do -- UI Functions
 		return (pcall(function()return Part.Name, Part.Parent~=nil and Part or error() end))
 	end
 
+    function Library:Tab( Data: { Name: string, Active: boolean } )
+        Data = type(Data)=="table" and Data or {}
+		Data.Name = Data.Name or "Tab"
+
+        local tabButton = Examples.TabExample:Clone()
+        tabButton.Name = Data.Name
+        tabButton.Text = Data.Name
+        tabButton.Parent = UI.Frame.MainContainer.MainPanel.LeftPanel.TabsContainer
+
+        local contentFrame = Instance.new("ScrollingFrame")
+        contentFrame.Name = Data.Name
+        contentFrame.Size = UDim2.new(1, -10, 1, -10)
+        contentFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        contentFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.BorderSizePixel = 0
+        contentFrame.ScrollBarThickness = 6
+        contentFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255)
+        contentFrame.Visible = false
+        contentFrame.Parent = UI.Frame.MainContainer.MainPanel.ContentPanel
+
+        local contentLayout = Instance.new("UIListLayout")
+        contentLayout.Padding = UDim.new(0, 5)
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        contentLayout.Parent = contentFrame
+
+        handleChildSize(contentFrame, contentFrame)
+
+        local tabLib = { Object = tabButton, Content = contentFrame }
+
+        local function switchTab()
+            if Config.ActiveTab == tabLib then return end
+            
+            -- Deactivate old tab
+            if Config.ActiveTab then
+                Config.ActiveTab.Object:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(60,60,60)
+                Config.ActiveTab.Object.TextColor3 = Color3.fromRGB(200,200,200)
+                Config.ActiveTab.Content.Visible = false
+            end
+            
+            -- Activate new tab
+            tabButton:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(120, 180, 255)
+            tabButton.TextColor3 = Color3.fromRGB(255,255,255)
+            contentFrame.Visible = true
+            Config.ActiveTab = tabLib
+        end
+
+        HandleEvent(tabButton.MouseButton1Click, switchTab)
+
+        function tabLib:Slider(...)
+            local args = {...}
+            args[1].Tab = contentFrame
+            return Library:Slider(unpack(args))
+        end
+
+        function tabLib:Label(...)
+            local args = {...}
+            args[1].Tab = contentFrame
+            return Library:Label(unpack(args))
+        end
+
+        function tabLib:Button(...)
+            local args = {...}
+            args[1].Tab = contentFrame
+            return Library:Button(unpack(args))
+        end
+
+        function tabLib:Toggle(...)
+            local args = {...}
+            args[1].Tab = contentFrame
+            return Library:Toggle(unpack(args))
+        end
+
+        function tabLib:Keybind(...)
+            local args = {...}
+            args[1].Tab = contentFrame
+            return Library:Keybind(unpack(args))
+        end
+
+        function tabLib:Dropdown(...)
+            local args = {...}
+            args[1].Tab = contentFrame
+            return Library:Dropdown(unpack(args))
+        end
+
+        function tabLib:Color(...)
+            local args = {...}
+            args[1].Tab = contentFrame
+            return Library:Color(unpack(args))
+        end
+
+        function tabLib:Section(name)
+            local section = Library:Section(name)
+            section:SetParent(contentFrame)
+            return section
+        end
+        
+        if Data.Active then
+            switchTab()
+        end
+
+        return tabLib
+    end
+
 	function Library:Slider( Data: { Text: string, Tab: Frame, Callback: { text: string } }, Min: number, Max: number, Minimum: number, Maximum: number )
 
 		Data = type(Data)=="table" and Data or {}
 		Data.Name = Data.Name or Data.Text or "Example"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+		Data.Tab = Data.Tab or UI.Frame.MainContainer.MainPanel.ContentPanel.Visible and UI.Frame.MainContainer.MainPanel.ContentPanel or nil
 	
 		Data.Min = Data.Min or Data.Minimum or Data.min or Data.minimum or 1
 		Data.Max = Data.Max or Data.Maximum or Data.max or Data.maximum or 10
@@ -1325,7 +1435,7 @@ do -- UI Functions
 		SliderExample.ViewSlider.Label.Text = Data.Name
 		SliderExample.ViewSlider.Value.Text = `{Data.Min}/{Data.Max}`
 		SliderExample.ViewSlider.Position = Data.Position or SliderExample.ViewSlider.Position
-		SliderExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		SliderExample.Parent = Data.Tab
 	
 		local bar = SliderExample
 		local viewSlider = bar.ViewSlider
@@ -1430,14 +1540,14 @@ do -- UI Functions
 		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+		Data.Tab = Data.Tab or UI.Frame.MainContainer.MainPanel.ContentPanel.Visible and UI.Frame.MainContainer.MainPanel.ContentPanel or nil
 	
 		local LabelExample = Examples:FindFirstChild('Label')
 		if not LabelExample then return; end
 		
 		LabelExample = LabelExample:Clone()
 		LabelExample.Label.Text = Data.Text
-		LabelExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		LabelExample.Parent = Data.Tab
 		
 		local LabelTable = { Object = LabelExample.Label }
 		
@@ -1461,7 +1571,7 @@ do -- UI Functions
 	
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+		Data.Tab = Data.Tab or UI.Frame.MainContainer.MainPanel.ContentPanel.Visible and UI.Frame.MainContainer.MainPanel.ContentPanel or nil
 		Data.Callback = type(Data.Callback)=="function" and Data.Callback or function() end
 	
 		local ButtonExample = Examples:FindFirstChild('Button')
@@ -1470,7 +1580,7 @@ do -- UI Functions
 		ButtonExample = ButtonExample:Clone()
 		ButtonExample.Label.Text = Data.Text
 		local event = HandleEvent(ButtonExample.MouseButton1Click:Connect(Data.Callback))
-		ButtonExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		ButtonExample.Parent = Data.Tab
 	
 		local ButtonTable = { Object = ButtonExample.Label }
 		
@@ -1508,7 +1618,7 @@ do -- UI Functions
 		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+		Data.Tab = Data.Tab or UI.Frame.MainContainer.MainPanel.ContentPanel.Visible and UI.Frame.MainContainer.MainPanel.ContentPanel or nil
 		Data.Value = (type(Data.Value)=="boolean" or false) and Data.Value or false
 		Data.Callback = type(Data.Callback)=="function" and Data.Callback or function() end
 	
@@ -1520,7 +1630,7 @@ do -- UI Functions
 		
 		ToggleExample = ToggleExample:Clone()
 		ToggleExample.ViewToggle.Label.Text = Data.Text
-		ToggleExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		ToggleExample.Parent = Data.Tab
 		
 		local ToggleConfig = {
 			
@@ -1632,7 +1742,7 @@ do -- UI Functions
 		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Keybind"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+		Data.Tab = Data.Tab or UI.Frame.MainContainer.MainPanel.ContentPanel.Visible and UI.Frame.MainContainer.MainPanel.ContentPanel or nil
 		Data.Value = (typeof(Data.Value)=="Enum" and Data.Value.Name) or (typeof(Data.Value)=="string" and Data.Value) or nil
 		Data.Value = type(Data.Value)=="string" and Data.Value or "K"
 		
@@ -1651,7 +1761,7 @@ do -- UI Functions
 		KeybindExample = KeybindExample:Clone()
 		KeybindExample.ViewKeybind.Label.Text = Data.Text
 		KeybindExample.ViewKeybind.Button.Text = Data.Value
-		KeybindExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		KeybindExample.Parent = Data.Tab
 
 
 		HandleEvent(UIS.InputBegan:Connect(function(keycode, chat)
@@ -1766,14 +1876,14 @@ do -- UI Functions
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Dropdown"
 		Data.Data = type(Data.Data)=="table" and Data.Data or {}
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+		Data.Tab = Data.Tab or UI.Frame.MainContainer.MainPanel.ContentPanel.Visible and UI.Frame.MainContainer.MainPanel.ContentPanel or nil
 		Data.Callback = Data.Callback or function() end
 
 		local DropdownExample = Examples:FindFirstChild("Dropdown")
 		if not DropdownExample then return; end
 
 		DropdownExample = DropdownExample:Clone()
-		DropdownExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		DropdownExample.Parent = Data.Tab
 		
 		local Dropdown = DropdownExample.ViewDropdown
 		Dropdown.Label.Text = Data.Text
@@ -2028,14 +2138,14 @@ do -- UI Functions
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Color"
 		Data.Data = type(Data.Data)=="table" and Data.Data or {}
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+		Data.Tab = Data.Tab or UI.Frame.MainContainer.MainPanel.ContentPanel.Visible and UI.Frame.MainContainer.MainPanel.ContentPanel or nil
 		Data.Callback = Data.Callback or function() end
 
 		local ColorExample = Examples:FindFirstChild("ColorPicker")
 		if not ColorExample then return; end
 
 		ColorExample = ColorExample:Clone()
-		ColorExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		ColorExample.Parent = Data.Tab
 		
 		local ViewColor = ColorExample:FindFirstChild("ViewColor")
 		ViewColor.Label.Text = Data.Text
@@ -2277,49 +2387,51 @@ do -- UI Functions
 		Line.Position = UDim2.new(0.353349507, 0, 0.0730726197, 0)
 		Line.Size = UDim2.new(0.292164683, 0, 0.00135501358, 0)
 		
-		local LeftSide = Frame:FindFirstChild("Left") or Frame:FindFirstChild("Right")
-		LeftSide = LeftSide and LeftSide:FindFirstChildOfClass("ScrollingFrame") or LeftSide
-		if not LeftSide then Section:Destroy(); return "Frame Componets not found!" end
+		local ParentFrame
 		
-		Section.Name = name
-		Section.Parent = LeftSide
-		handleChildSize(_Frame, _Frame)
+        function sectionLib:SetParent(parent)
+            if typeof(parent) == "Instance" and parent:IsA("GuiObject") then
+                Section.Parent = parent
+                ParentFrame = parent
+                handleChildSize(_Frame, _Frame)
+            end
+        end
 
 		function sectionLib:Slider(Data)
 			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
+			Data.Tab = _Frame
 			return Library:Slider(Data)
 		end
 		
 		function sectionLib:Label(Data)
 			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
+			Data.Tab = _Frame
 			return Library:Label(Data)
 		end
 		
 		function sectionLib:Button(Data)
 			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
+			Data.Tab = _Frame
 			return Library:Button(Data)
 		end
 		function sectionLib:Toggle(Data)
 			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
+			Data.Tab = _Frame
 			return Library:Toggle(Data)
 		end
 		function sectionLib:Keybind(Data)
 			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
+			Data.Tab = _Frame
 			return Library:Keybind(Data)
 		end
 		function sectionLib:Dropdown(Data)
 			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
+			Data.Tab = _Frame
 			return Library:Dropdown(Data)
 		end
 		function sectionLib:Color(Data)
 			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
+			Data.Tab = _Frame
 			return Library:Color(Data)
 		end
 		function sectionLib:Hide()
@@ -2327,7 +2439,7 @@ do -- UI Functions
 		end
 		
 		function sectionLib:Show()
-			Section.Parent = LeftSide
+			Section.Parent = ParentFrame
 		end
 
 		return sectionLib
@@ -2353,6 +2465,7 @@ local smoothingFactor = 0.1 -- 平滑系数。值越小，过渡越平滑 (推�
 
 Cache.add(game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
 	local mouse = game:GetService("Players").LocalPlayer:GetMouse()
+    if not Frame.Visible then return end -- Only tilt when visible
 
 	-- 1. 计算目标倾斜角度
 	local targetTiltX = (mouse.X - mouse.ViewSizeX/2) * SCALE
@@ -2370,61 +2483,12 @@ end))
 
 
 -------------------------------------- Main Section
-local Main = Frame.Main
-local PlayerViewport, PlayerName, Level, XP = Main:FindFirstChild("PlayerViewport"), Main:FindFirstChild("PlayerName"), Main:FindFirstChild("Level"), Main:FindFirstChild("XP")
+local MainPanel = UI.Frame.MainContainer.MainPanel
+local PlayerName = MainPanel.Header.PlayerName
 
-do -- PlayerName
-	task.spawn(function()
-		local Label = PlayerName
-		local Text = Label:GetAttribute("Text") or Label.Text
-
-		local typeDelay = 0.1
-		local Length = 5
-		local EffectApplying = false
-
-		local function TextRainbow()
-
-			if EffectApplying then return; end
-			EffectApplying = true
-
-			Text = Label:GetAttribute("Text") or Text
-			Label.Text = ""
-
-			if #Text > 0 then
-				for i = 1, #Text do
-
-					local hue = tick() % Length / Length
-					local color = Color3.fromHSV(hue, 1, 1)
-					local r,g,b = math.floor((color.R*255) + 0.5), math.floor((color.G*255) + 0.5), math.floor((color.B*255) + 0.5)
-
-					local text = string.sub(Text, i, i)
-					Label.Text ..= `<font color="rgb({r}, {g}, {b})">{text}</font>`
-					task.wait(typeDelay)
-
-				end
-			end
-
-			task.wait(1)
-			EffectApplying = false
-
-		end
-		--===========================================
-		local HoverHandler = Label:WaitForChild("HoverHandler")
-
-		HoverHandler.MouseEnter:Connect(function()
-			Label:SetAttribute("Hover", true)
-		end)
-
-		HoverHandler.MouseLeave:Connect(function()
-			Label:SetAttribute("Hover", false)
-		end)
-		--===========================================
-		while task.wait() do
-			if Label:GetAttribute("Hover") then
-				TextRainbow()
-			end
-		end
-	end)
+do -- PlayerName Hover Effect (Disabled for now to simplify)
+	-- The rich text hover effect can be re-enabled here if desired.
+    -- For now, we keep the name static.
 end
 
 -------------------------------------- UI: Breathing, Config
@@ -2436,7 +2500,7 @@ local originalState = {}
 local fullscreenIcon = "http://www.roblox.com/asset/?id=284412499" -- Expand
 local normalIcon = "http://www.roblox.com/asset/?id=284412574" -- Shrink
 
-HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
+HandleEvent(UI.Frame.MainContainer.MainPanel.Header.ButtonContainer.FULLSCREEN.MouseButton1Click, function()
     isFullScreen = not isFullScreen
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     
@@ -2448,24 +2512,24 @@ HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
         
         -- Animate to fullscreen
         local fullscreenProperties = {
-            Size = Vector3.new(35, 20, 2) -- Fullscreen size
+            Size = Vector3.new(45, 25, 2) -- Fullscreen size
         }
         TS:Create(Part, tweenInfo, fullscreenProperties):Play()
-        LookView = Vector3.new(0, 0, -1.8) -- Move closer to camera
+        LookView = Vector3.new(0, 0, -2.5) -- Move closer to camera
         SCALE = 0 -- Disable tilt
-        UI.Frame.Right.FULLSCREEN.Image = normalIcon
+        UI.Frame.MainContainer.MainPanel.Header.ButtonContainer.FULLSCREEN.Image = normalIcon
     else
         -- Animate back to original state
         TS:Create(Part, tweenInfo, {Size = originalState.Size}):Play()
         LookView = originalState.LookView
         SCALE = originalState.Scale
-        UI.Frame.Right.FULLSCREEN.Image = fullscreenIcon
+        UI.Frame.MainContainer.MainPanel.Header.ButtonContainer.FULLSCREEN.Image = fullscreenIcon
     end
 end)
 
 local isResizing = false
 local initialMousePos, initialSize
-local minSize = Vector3.new(15, 8, 2)
+local minSize = Vector3.new(18, 10, 2)
 local maxSize = Vector3.new(50, 30, 2)
 HandleEvent(UI.Frame.ResizeHandle.InputBegan, function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -2498,32 +2562,20 @@ HandleEvent(UIS.InputEnded, function(input)
 end)
 
 -- [[ FEATURE: New Minimize/Transparency Logic ]]
-local isFaded = false
-HandleEvent(UI.Frame.Right.MINIMIZE.MouseButton1Click, function()
-    if Config["FrameCooldown"] then return end
-    Config["FrameCooldown"] = true
-    isFaded = not isFaded
-    
-    local Time = 0.5
-    local targetTransparency = isFaded and 0.8 or 0
-    
-    for i,v in next, Frame:GetDescendants() do
-        if v:IsA("GuiObject") then
-            local props = {}
-            if v:IsA("TextLabel") or v:IsA("TextButton") then props.TextTransparency = targetTransparency end
-            if v:IsA("ImageLabel") or v:IsA("ImageButton") then props.ImageTransparency = targetTransparency end
-            if v:IsA("Frame") or v:IsA("ScrollingFrame") then props.BackgroundTransparency = (v.Name == "Line" and 1) or targetTransparency end
-            
-            TS:Create(v, TweenInfo.new(Time), props):Play()
-        end
-    end
-
-    task.wait(Time + 0.1)
-    Config["FrameCooldown"] = false
+HandleEvent(UI.Frame.MainContainer.MainPanel.Header.ButtonContainer.MINIMIZE.MouseButton1Click, function()
+    Frame.Visible = false
+    MinimizedBar.Visible = true
 end)
 
-HandleEvent(UI.Frame.Right.EXIT.MouseButton1Click, function()
+HandleEvent(MinimizedBar:FindFirstChild("ExpandButton").MouseButton1Click, function()
+    Frame.Visible = true
+    MinimizedBar.Visible = false
+end)
+
+
+HandleEvent(UI.Frame.MainContainer.MainPanel.Header.ButtonContainer.EXIT.MouseButton1Click, function()
     Frame.Visible = false
+    MinimizedBar.Visible = false -- also hide the minimized bar
     if OpenButton then OpenButton.Visible = true end
 end)
 
@@ -2537,7 +2589,7 @@ do -- Breathing
 	WrapFunction(function()
 		Loop(function()
 			if not Config.Breathing and started==PartIncreased then return; end
-            if isFullScreen then return end -- Don't breathe in fullscreen
+            if isFullScreen or not Frame.Visible then return end -- Don't breathe in fullscreen or when hidden
 			TS:Create(Part, TweenInfo.new(waitTime), { Size = Part.Size + (PartIncreased and Vector3.new(-X, -Y, -Z) or Vector3.new(X, Y, Z)) }):Play()
 			task.wait(waitTime)
 			PartIncreased = not PartIncreased
@@ -2557,8 +2609,7 @@ setmetatable(Library, { -- Config Manager
 	__newindex = function(self, base, value)
 		if base == "Text" and type(value)=="string" then
 			return pcall(function()
-				UI.Frame.Main.PlayerName:SetAttribute("Text", value)
-				UI.Frame.Main.PlayerName.Text = value
+				UI.Frame.MainContainer.MainPanel.Header.PlayerName.Text = value
                 if OpenButton then OpenButton.Text = value end
 			end)
 		end
@@ -2566,15 +2617,15 @@ setmetatable(Library, { -- Config Manager
 	end
 })
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-function Library:Config()
+function Library:Init()
 	
-	Config.Breathing = Storage.Data["LinenLib_Breathing"]
-	Library:Toggle({ Text = "Breathing", Value = type(Storage.Data["LinenLib_Breathing"])=="nil" and true or Storage.Data["LinenLib_Breathing"], Callback = function(value) Storage.Data["LinenLib_Breathing"] = value; Config.Breathing = value end })
-	Library:Toggle({ Text = "Always On Top", Value = type(Storage.Data["LinenLib_AOT"])=="nil" and true or Storage.Data["LinenLib_AOT"], Callback = function(value) Storage.Data["LinenLib_AOT"] = value;UI["AlwaysOnTop"] = value end })
-	Library:Keybind({ Text = "Toggle Key", Value = Storage.Data["LinenLib_Toggle"] or "RightShift", Callback = function() end, OnChange = function(key) Config.ToggleKey = Enum.KeyCode[key] or Enum.KeyCode.RightShift end })
+    local settingsTab = self:Tab({Name = "Settings", Active = true})
+	settingsTab:Toggle({ Text = "Breathing", Value = type(Storage.Data["LinenLib_Breathing"])=="nil" and true or Storage.Data["LinenLib_Breathing"], Callback = function(value) Storage.Data["LinenLib_Breathing"] = value; Config.Breathing = value end })
+	settingsTab:Toggle({ Text = "Always On Top", Value = type(Storage.Data["LinenLib_AOT"])=="nil" and true or Storage.Data["LinenLib_AOT"], Callback = function(value) Storage.Data["LinenLib_AOT"] = value;UI["AlwaysOnTop"] = value end })
+	settingsTab:Keybind({ Text = "Toggle Key", Value = Storage.Data["LinenLib_Toggle"] or "RightShift", Callback = function() end, OnChange = function(key) Config.ToggleKey = Enum.KeyCode[key] or Enum.KeyCode.RightShift end })
 	
 	--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	Library:Slider({
+	settingsTab:Slider({
 		Text = "Z", -- Text of Slider
 	
 		Min = 1,
@@ -2589,7 +2640,7 @@ function Library:Config()
 		end,
 	})
 	
-	Library:Slider({
+	settingsTab:Slider({
 		Text = "Y",
 	
 		Min = 0,
@@ -2606,7 +2657,7 @@ function Library:Config()
 		end,
 	}):Set(Storage.Data["LinenLib_Y"])
 	
-	Library:Slider({
+	settingsTab:Slider({
 	
 		Text = "R", -- Text of Slider
 		Step = 1,
@@ -2624,7 +2675,7 @@ function Library:Config()
 	
 	})
 	
-	Library:Slider({
+	settingsTab:Slider({
 	
 		Text = "G",
 		Step = 1,
@@ -2659,12 +2710,13 @@ end
 
 Library.Frame = Frame
 Library.Storage = Storage
-Library:Config() -- Loads settings
+Library:Init() -- Loads settings
 
 -- [[ WindUI Style Open Button ]]
-local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+local ScreenGui = MinimizedBar.Parent
 OpenButton = Instance.new("TextButton", ScreenGui)
 OpenButton.Text = "Linui"
+OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 150, 0, 40)
 OpenButton.Position = UDim2.new(0, 20, 0.5, 0)
 OpenButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -2689,8 +2741,19 @@ end)
 HandleEvent(UIS.InputBegan, function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Config.ToggleKey then
-        Frame.Visible = not Frame.Visible
-        OpenButton.Visible = not Frame.Visible
+        -- If main frame is visible, minimize it.
+        if Frame.Visible then
+            Frame.Visible = false
+            MinimizedBar.Visible = true
+        -- If only minimized bar is visible, expand it.
+        elseif MinimizedBar.Visible then
+            Frame.Visible = true
+            MinimizedBar.Visible = false
+        -- If both are hidden (i.e. toggled from open button), show main frame.
+        else
+            Frame.Visible = true
+            OpenButton.Visible = false
+        end
     end
 end)
 
