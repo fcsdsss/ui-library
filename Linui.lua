@@ -15,7 +15,7 @@
 ]]
 
 -- 2000+ Lines, crazy isn't it?
--- Version: 1.5 (Interaction & UX Refinement) - MODIFIED AS PER USER REQUEST
+-- Version: 1.5 (Interaction & UX Refinement) - FINAL MODIFIED VERSION
 STRING = "Fixes:"
 --[[
 	* Fixed UI click-related bugs
@@ -289,12 +289,13 @@ do -- Main UI
 	Main["Position"] = UDim2.new(0.2609618008136749, 0, 0.043316829949617386, 0)
 	Main["Parent"] = Frame
 
-    -- NEW: Tab Content Container
-    local TabContentContainer = Instance.new("Frame")
-    TabContentContainer.Name = "TabContentContainer"
-    TabContentContainer.Size = UDim2.new(1, 0, 1, 0)
-    TabContentContainer.BackgroundTransparency = 1
-    TabContentContainer.Parent = Main
+    -- NEW/FIX: Container for Tab Pages to prevent overlap with the title
+    local TabPagesContainer = Instance.new("Frame")
+    TabPagesContainer.Name = "TabPagesContainer"
+    TabPagesContainer.Size = UDim2.new(1, 0, 0.88, 0) -- Occupy the area below the title
+    TabPagesContainer.Position = UDim2.new(0, 0, 0.12, 0) -- Start below the title area
+    TabPagesContainer.BackgroundTransparency = 1
+    TabPagesContainer.Parent = Main
 	
 	local PlayerName = Instance.new("TextLabel")
 	PlayerName["TextWrapped"] = true
@@ -428,16 +429,14 @@ do -- Main UI
 	local UIAspectRatioConstraint_4 = Instance.new("UIAspectRatioConstraint")
 	UIAspectRatioConstraint_4["AspectRatio"] = 0.48230084776878357
 	UIAspectRatioConstraint_4["Parent"] = Frame_2
-
+	
     -- [[ MODIFIED SECTION START: Control Buttons ]]
 
-	-- DELETED: 全屏按钮已移除
-    
-	-- NEW: 恢复黄色按钮，用于隐藏UI
+	-- 黄色按钮，用于隐藏/显示UI
 	local MINIMIZE = Instance.new("TextButton")
 	MINIMIZE.Name = "MINIMIZE"
 	MINIMIZE.Size = UDim2.new(0.08, 0, 0.045, 0)
-	MINIMIZE.Position = UDim2.new(0.78, 0, 0.008, 0) -- MODIFIED: 调整间距
+	MINIMIZE.Position = UDim2.new(0.78, 0, 0.008, 0) -- 调整间距
 	MINIMIZE.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	MINIMIZE.Text = ""
     MINIMIZE.Parent = Right
@@ -462,7 +461,7 @@ do -- Main UI
 	EXIT["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
 	EXIT["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 	EXIT.Size = UDim2.new(0.08, 0, 0.045, 0)
-	EXIT.Position = UDim2.new(0.9, 0, 0.008, 0) -- MODIFIED: 调整间距
+	EXIT.Position = UDim2.new(0.9, 0, 0.008, 0) -- 调整间距
 	EXIT["TextColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["Text"] = ""
@@ -510,9 +509,7 @@ do -- Main UI
 	
 end
 
-do -- UI Elements (This block contains the templates for UI elements)
-    -- This entire block is unchanged. It provides the base elements for the functions.
-    -- I am including it to ensure the code is complete.
+do -- UI Elements
 	local UI_Examples = Examples
 	local Keybind = Instance.new("Frame")
 	Keybind["BorderSizePixel"] = 0
@@ -1991,7 +1988,7 @@ do -- UI Functions
         contentFrame.BorderSizePixel = 0
         contentFrame.ScrollBarThickness = 6
         contentFrame.Visible = false -- Hide by default
-        contentFrame.Parent = UI.Frame.Main.TabContentContainer
+        contentFrame.Parent = UI.Frame.Main.TabPagesContainer -- MODIFIED: Parent to the correct container
 
         local listLayout = Instance.new("UIListLayout")
         listLayout.Padding = UDim.new(0, 5)
@@ -2046,86 +2043,60 @@ end
 local SCALE = 0.01
 local LookView = Vector3.new(0, .1, -11)
 
-local StoredTransparency = {}
 local PartIncreased = false
 
--- [[ MOBILE PATCH START: SMOOTH UI TILT ]]
 local currentTiltX = 0
 local currentTiltY = 0
-local smoothingFactor = 0.1 -- 平滑系数。值越小，过渡越平滑 (推荐 0.05 到 0.2)
+local smoothingFactor = 0.1
 
 Cache.add(game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
 	local mouse = game:GetService("Players").LocalPlayer:GetMouse()
-
-	-- 1. 计算目标倾斜角度
 	local targetTiltX = (mouse.X - mouse.ViewSizeX/2) * SCALE
 	local targetTiltY = (mouse.Y - mouse.ViewSizeY/2) * SCALE
 	
-	-- 2. 使用线性插值 (Lerp) 平滑地更新当前倾斜角度
 	currentTiltX = currentTiltX + (targetTiltX - currentTiltX) * smoothingFactor
 	currentTiltY = currentTiltY + (targetTiltY - currentTiltY) * smoothingFactor
 	
-	-- 3. 使用平滑后的角度来更新UI的CFrame
 	Part.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(LookView.X, LookView.Y, LookView.Z) * CFrame.Angles(0, math.rad(currentTiltX), 0) * CFrame.Angles(math.rad(currentTiltY) , 0 , 0)
-	
 end))
--- [[ MOBILE PATCH END: SMOOTH UI TILT ]]
-
 
 -------------------------------------- Main Section
 local Main = Frame.Main
-local PlayerViewport, PlayerName, Level, XP = Main:FindFirstChild("PlayerViewport"), Main:FindFirstChild("PlayerName"), Main:FindFirstChild("Level"), Main:FindFirstChild("XP")
+local PlayerName = Main:FindFirstChild("PlayerName")
 
 do -- PlayerName
 	task.spawn(function()
 		local Label = PlayerName
 		local Text = Label:GetAttribute("Text") or Label.Text
-
 		local typeDelay = 0.1
 		local Length = 5
 		local EffectApplying = false
 
 		local function TextRainbow()
-
 			if EffectApplying then return; end
 			EffectApplying = true
-
 			Text = Label:GetAttribute("Text") or Text
 			Label.Text = ""
-
 			if #Text > 0 then
 				for i = 1, #Text do
-
 					local hue = tick() % Length / Length
 					local color = Color3.fromHSV(hue, 1, 1)
 					local r,g,b = math.floor((color.R*255) + 0.5), math.floor((color.G*255) + 0.5), math.floor((color.B*255) + 0.5)
-
 					local text = string.sub(Text, i, i)
 					Label.Text ..= `<font color="rgb({r}, {g}, {b})">{text}</font>`
 					task.wait(typeDelay)
-
 				end
 			end
-
 			task.wait(1)
 			EffectApplying = false
-
 		end
-		--===========================================
+		
 		local HoverHandler = Label:WaitForChild("HoverHandler")
+		HoverHandler.MouseEnter:Connect(function() Label:SetAttribute("Hover", true) end)
+		HoverHandler.MouseLeave:Connect(function() Label:SetAttribute("Hover", false) end)
 
-		HoverHandler.MouseEnter:Connect(function()
-			Label:SetAttribute("Hover", true)
-		end)
-
-		HoverHandler.MouseLeave:Connect(function()
-			Label:SetAttribute("Hover", false)
-		end)
-		--===========================================
 		while task.wait() do
-			if Label:GetAttribute("Hover") then
-				TextRainbow()
-			end
+			if Label:GetAttribute("Hover") then TextRainbow() end
 		end
 	end)
 end
@@ -2149,9 +2120,7 @@ HandleEvent(UIS.InputChanged, function(input)
     if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local currentMousePos = Vector2.new(input.Position.X, input.Position.Y)
         local delta = currentMousePos - initialMousePos
-        
         local newSize = initialSize + Vector3.new(delta.X * 0.05, -delta.Y * 0.05, 0)
-        
         newSize = Vector3.new(
             math.clamp(newSize.X, minSize.X, maxSize.X),
             math.clamp(newSize.Y, minSize.Y, maxSize.Y),
@@ -2219,9 +2188,9 @@ function Library:Config()
 	
 	--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	Library:Slider({
-		Text = "Z", -- Text of Slider
+		Text = "Z",
 		Min = 9, -- MODIFIED: Minimum Z distance set to 9
-		Value = Storage.Data["LinenLib_Z"] or math.abs(LookView.Z),
+		Value = (Storage.Data["LinenLib_Z"] and math.max(9, Storage.Data["LinenLib_Z"])) or math.max(9, math.abs(LookView.Z)),
 		Max = 40,
 		WaitForMouse = true,
 		Callback = function(value, prevalue)
@@ -2289,9 +2258,11 @@ Library.Storage = Storage
 Library:Config() -- Loads settings
 
 -- [[ FINAL MODIFICATIONS START ]]
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+ScreenGui.Name = "Linui_ScreenGui"
+ScreenGui.ResetOnSpawn = false
 
 -- [[ 1. Draggable Open Button (for Red Exit Button) ]]
-local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 OpenButton = Instance.new("TextButton", ScreenGui)
 OpenButton.Text = "Linui"
 OpenButton.Size = UDim2.new(0, 150, 0, 40)
@@ -2311,6 +2282,7 @@ obStroke.Color = Color3.fromRGB(80, 80, 80)
 
 HandleEvent(OpenButton.MouseButton1Click, function()
     UI.Enabled = true
+	Part.Transparency = 0
     OpenButton.Visible = false
 end)
 
@@ -2336,40 +2308,51 @@ local tcbStroke = Instance.new("UIStroke", TopCenterButton)
 tcbStroke.Color = Color3.fromRGB(100, 100, 100)
 tcbStroke.Transparency = 0.5
 
--- NEW: Animation Function
+-- NEW/FIX: Animation Function with transparency saving and restoration
+local originalTransparencies = {}
 local function SetUIVisibility(visible)
-    local targetTransparency = visible and 0 or 1
     local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweens = {}
 
     if visible then
         UI.Enabled = true
         Part.Transparency = 0
+    else
+        originalTransparencies = {} -- Clear previous values before hiding
     end
 
     for _, descendant in ipairs(Frame:GetDescendants()) do
         if descendant:IsA("GuiObject") then
             local properties = {}
-            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
-                properties.TextTransparency = targetTransparency
-            end
-            if descendant:IsA("ImageLabel") or descendant:IsA("ImageButton") then
-                properties.ImageTransparency = targetTransparency
-            end
-            if descendant:IsA("Frame") or descendant:IsA("ScrollingFrame") then
-                properties.BackgroundTransparency = targetTransparency
-            end
-            if descendant:IsA("UIStroke") then
-                properties.Transparency = targetTransparency
+            local hasProp = false
+
+            if not visible then -- Store original values when hiding
+                originalTransparencies[descendant] = {}
+                if pcall(function() return descendant.TextTransparency end) then originalTransparencies[descendant].Text = descendant.TextTransparency end
+                if pcall(function() return descendant.ImageTransparency end) then originalTransparencies[descendant].Image = descendant.ImageTransparency end
+                if pcall(function() return descendant.BackgroundTransparency end) then originalTransparencies[descendant].Background = descendant.BackgroundTransparency end
+                if descendant:IsA("UIStroke") then originalTransparencies[descendant].Stroke = descendant.Transparency end
             end
 
-            if next(properties) then
-                TS:Create(descendant, tweenInfo, properties):Play()
+            local original = originalTransparencies[descendant]
+
+            if pcall(function() return descendant.TextTransparency end) then hasProp=true; properties.TextTransparency = visible and (original and original.Text or 0) or 1 end
+            if pcall(function() return descendant.ImageTransparency end) then hasProp=true; properties.ImageTransparency = visible and (original and original.Image or 0) or 1 end
+            if pcall(function() return descendant.BackgroundTransparency end) then hasProp=true; properties.BackgroundTransparency = visible and (original and original.Background or 0) or 1 end
+            if descendant:IsA("UIStroke") then hasProp=true; properties.Transparency = visible and (original and original.Stroke or 0) or 1 end
+
+            if hasProp and next(properties) then
+                table.insert(tweens, TS:Create(descendant, tweenInfo, properties))
             end
         end
     end
+
+    for _, tween in ipairs(tweens) do
+        tween:Play()
+    end
     
     if not visible then
-        task.wait(tweenInfo.Time)
+        task.wait(tweenInfo.Time + 0.1)
         UI.Enabled = false
         Part.Transparency = 1
     end
@@ -2392,16 +2375,10 @@ HandleEvent(UIS.InputBegan, function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Config.ToggleKey then
         local isCurrentlyVisible = UI.Enabled
-        SetUIVisibility(not isCurrentlyVisible)
+        if isCurrentlyVisible then SetUIVisibility(false) else UI.Enabled = true; Part.Transparency = 0 end
         
-        -- Also handle the visibility of the draggable/top buttons
-        if isCurrentlyVisible then -- if it WAS visible, we are now hiding it
-            OpenButton.Visible = true
-            TopCenterButton.Visible = false
-        else -- if it WAS hidden, we are now showing it
-            OpenButton.Visible = false
-            TopCenterButton.Visible = false
-        end
+        OpenButton.Visible = isCurrentlyVisible
+        TopCenterButton.Visible = false
     end
 end)
 
