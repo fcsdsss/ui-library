@@ -1,8 +1,6 @@
 --[[
     GET/REQUEST UPDATES HERE: https://discord.gg/rc3TDqKmjN
     Creator: linenhs (discord.com)
-    
-    -- IMPROVEMENT: WindUI Features Integrated by Gemini --
 
     [ * Links:
          Documentation: https://reallinen.gitbook.io/3d-ui-linui-documentation/
@@ -17,7 +15,7 @@
 ]]
 
 -- 2000+ Lines, crazy isn't it?
--- Version: 2.0 (Tab System & WindUI UX Integration)
+-- Version: 1.5 (Interaction & UX Refinement)
 STRING = "Fixes:"
 --[[
 	* Fixed UI click-related bugs
@@ -32,13 +30,12 @@ STRING = "Fixes:"
 
 STRING = "Updates:"
 --[[
-    * IMPROVEMENT: Added a full Tab System. Main content area now switches based on selected tab.
 	* Added Colorpicker
     * Patched for mobile experience (Slider, UI hiding, and smooth tilting)
-    * IMPROVEMENT: Re-purposed the Exit button into a proper Minimize button that hides the UI and shows a draggable Open button.
-    * IMPROVEMENT: Removed the old transparency (yellow) button.
+    * Added independent Fullscreen button with a clearer icon
+    * Re-purposed Minimize (yellow) button to toggle transparency (fade in/out)
     * Replaced old minimize logic with a WindUI-style draggable toggle bound to the global ToggleKey
-    * IMPROVEMENT: Implemented a WindUI-style bottom-right corner handle for resizing the window.
+    * Replaced resizer handle with a corner triangle
     * Increased size of top-right buttons for better mobile usability
 ]]
 
@@ -194,9 +191,8 @@ Cache.add(Objects)
 Cache.add(Part)
 
 local UI, Frame, OpenButton = nil, nil, nil;
--- IMPROVEMENT: Added Tabs and CurrentTab to the Library's state
 local Config = { ["Keys"] = {}, ["Cooldowns"] = {}, ["UI"] = {}, Breathing = true, ToggleKey = Enum.KeyCode.RightShift }
-local Library = { Tabs = {}, CurrentTab = nil }
+local Library = { }
 
 local function HandleEvent(BindableEvent, callback)
 	return BindableEvent and type(callback)=="function" and (function() local event = BindableEvent:Connect(callback); Cache.add(event); return event end)() or (function() Cache.add(BindableEvent);return BindableEvent end)()
@@ -251,142 +247,259 @@ do -- Main UI
 	UI["ZIndexBehavior"] = Enum.ZIndexBehavior.Sibling
 	UI["AlwaysOnTop"] = true
     
+    -- [[ FIX: Screen Blur ]]
+    -- Defer parenting to avoid affecting game's core UI on startup
     task.spawn(function()
         pcall(function() UI.Parent = Part end)
     end)
+    -- [[ END FIX ]]
 
     Frame = Instance.new("ImageButton")
 	Frame["BorderSizePixel"] = 0
 	Frame["Name"] = "Frame"
-	Frame["BackgroundColor3"] = Color3.fromRGB(30, 30, 30)
+	Frame["BackgroundColor3"] = Color3.fromRGB(30.00000011175871, 30.00000011175871, 30.00000011175871)
 	Frame["Image"] = "rbxasset://textures/ui/GuiImagePlaceholder.png"
-	Frame["Size"] = UDim2.new(1, 0, 1, 0) --IMPROVEMENT: Changed to fill the part
+	Frame["Size"] = UDim2.new(0.8960000276565552, 0, 1, 0)
 	Frame["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	Frame["ImageTransparency"] = 1
+	Frame["Position"] = UDim2.new(0.052000001072883606, 0, 0, 0)
 	Frame["BackgroundTransparency"] = 1
 	Frame["Parent"] = UI
 	
+	local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
+	UIAspectRatioConstraint["AspectRatio"] = 1.75
+	UIAspectRatioConstraint["Parent"] = Frame
+	
 	local UICorner = Instance.new("UICorner")
-	UICorner["CornerRadius"] = UDim.new(0, 8) -- IMPROVEMENT: Added a slight corner radius
+	UICorner["CornerRadius"] = UDim.new(0, 0)
 	UICorner["Parent"] = Frame
-    
-    -- IMPROVEMENT: Main background to cover the whole frame
+	
 	local Main = Instance.new("ImageLabel")
 	Main["BorderSizePixel"] = 0
 	Main["ScaleType"] = Enum.ScaleType.Tile
-	Main["BackgroundColor3"] = Color3.fromRGB(16, 16, 16)
+	Main["BackgroundColor3"] = Color3.fromRGB(16.000000946223736, 16.000000946223736, 16.000000946223736)
 	Main["Name"] = "Main"
 	Main["ImageTransparency"] = 1
 	Main["Image"] = "rbxassetid://14228549334"
-	Main["Size"] = UDim2.new(1, 0, 1, 0)
+	Main["Size"] = UDim2.new(0.4762379229068756, 0, 0.9121286869049072, 0)
 	Main["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	Main["ResampleMode"] = Enum.ResamplerMode.Pixelated
 	Main["BackgroundTransparency"] = 0.20000000298023224
-	Main["Position"] = UDim2.new(0, 0, 0, 0)
+	Main["Position"] = UDim2.new(0.2609618008136749, 0, 0.043316829949617386, 0)
 	Main["Parent"] = Frame
-
-    local UICorner_Main = Instance.new("UICorner")
-	UICorner_Main["CornerRadius"] = UDim.new(0, 8)
-	UICorner_Main["Parent"] = Main
-
-    -- IMPROVEMENT: Tab Bar (repurposing the 'Left' frame)
-	local TabBar = Instance.new("ScrollingFrame")
-	TabBar["Active"] = true
-	TabBar["BorderSizePixel"] = 0
-	TabBar["BackgroundColor3"] = Color3.fromRGB(10, 10, 10)
-	TabBar["Name"] = "TabBar"
-	TabBar["Size"] = UDim2.new(0.25, 0, 1, 0)
-	TabBar["BackgroundTransparency"] = 0.4
-	TabBar["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	TabBar["Position"] = UDim2.new(0, 0, 0, 0)
-    TabBar["ScrollBarThickness"] = 4
-	TabBar["Parent"] = Main
 	
-	local TabListLayout = Instance.new("UIListLayout")
-	TabListLayout["HorizontalAlignment"] = Enum.HorizontalAlignment.Center
-	TabListLayout["Padding"] = UDim.new(0, 5)
-    TabListLayout["SortOrder"] = Enum.SortOrder.LayoutOrder
-    TabListLayout.Padding = UDim.new(0, 8)
-	TabListLayout["Parent"] = TabBar
-
-    -- IMPROVEMENT: Content Container (repurposing the 'Right' frame)
-    local ContentContainer = Instance.new("Frame")
-	ContentContainer["BorderSizePixel"] = 0
-	ContentContainer["BackgroundColor3"] = Color3.fromRGB(10, 10, 10)
-	ContentContainer["Name"] = "ContentContainer"
-	ContentContainer["Size"] = UDim2.new(0.75, 0, 1, 0)
-	ContentContainer["BackgroundTransparency"] = 1
-	ContentContainer["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	ContentContainer["Position"] = UDim2.new(0.25, 0, 0, 0)
-	ContentContainer["Parent"] = Main
-
-    -- IMPROVEMENT: Add Player Name to top of TabBar
-    local PlayerName = Instance.new("TextLabel")
+	local PlayerName = Instance.new("TextLabel")
 	PlayerName["TextWrapped"] = true
 	PlayerName["BorderSizePixel"] = 0
 	PlayerName["RichText"] = true
 	PlayerName["Name"] = "PlayerName"
+	PlayerName["TextScaled"] = true
 	PlayerName["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	PlayerName["FontFace"] = Font.new("rbxassetid://12187370000", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-	PlayerName["Size"] = UDim2.new(0.9, 0, 0, 30)
-    PlayerName["LayoutOrder"] = -2
+	PlayerName["FontFace"] = Font.new("rbxassetid://12187370000", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+	PlayerName["Size"] = UDim2.new(0.21115538477897644, 0, 0.06368563324213028, 0)
+	PlayerName["Position"] = UDim2.new(0.39319005608558655, 0, 0.017617134377360344, 0)
 	PlayerName["TextColor3"] = Color3.fromRGB(255, 255, 255)
 	PlayerName["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	PlayerName["Text"] = "Linen"
 	PlayerName["BackgroundTransparency"] = 1
 	PlayerName["TextSize"] = 20
-	PlayerName["Parent"] = TabBar
-
+	PlayerName["Parent"] = Main
+	
+	local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint["MaxTextSize"] = 20
+	UITextSizeConstraint["Parent"] = PlayerName
+	
+	local HoverHandler = Instance.new("TextButton")
+	HoverHandler["TextWrapped"] = true
+	HoverHandler["BorderSizePixel"] = 0
+	HoverHandler["Name"] = "HoverHandler"
+	HoverHandler["TextSize"] = 14
+	HoverHandler["TextScaled"] = true
+	HoverHandler["BackgroundColor3"] = Color3.fromRGB(30.00000011175871, 30.00000011175871, 30.00000011175871)
+	HoverHandler["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+	HoverHandler["Size"] = UDim2.new(1.106918215751648, 0, 1.0638298988342285, 0)
+	HoverHandler["Position"] = UDim2.new(-0.050314463675022125, 0, -0.06382978707551956, 0)
+	HoverHandler["TextColor3"] = Color3.fromRGB(0, 0, 0)
+	HoverHandler["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	HoverHandler["Text"] = ""
+	HoverHandler["Font"] = Enum.Font.SourceSans
+	HoverHandler["BackgroundTransparency"] = 1
+	HoverHandler["Parent"] = PlayerName
+	
+	local UITextSizeConstraint_1 = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint_1["MaxTextSize"] = 14
+	UITextSizeConstraint_1["Parent"] = HoverHandler
+	
 	local Line = Instance.new("Frame")
 	Line["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
 	Line["Name"] = "Line"
-	Line["Size"] = UDim2.new(0.8, 0, 0, 2)
-    Line["BackgroundTransparency"] = 0.8
-    Line["LayoutOrder"] = -1
-    Line["Parent"] = TabBar
-    
-	local UICorner_Line = Instance.new("UICorner")
-	UICorner_Line.CornerRadius = UDim.new(1,0)
-	UICorner_Line.Parent = Line
+	Line["Size"] = UDim2.new(0.29216468334198, 0, 0.0013550135772675276, 0)
+	Line["BorderColor3"] = Color3.fromRGB(255, 255, 255)
+	Line["Position"] = UDim2.new(0.3533494770526886, 0, 0.0704626515507698, 0)
+	Line["Parent"] = Main
+	
+	local UICorner_1 = Instance.new("UICorner")
+	UICorner_1["CornerRadius"] = UDim.new(0, 0)
+	UICorner_1["Parent"] = Main
+	
+	local UIAspectRatioConstraint_1 = Instance.new("UIAspectRatioConstraint")
+	UIAspectRatioConstraint_1["AspectRatio"] = 0.9137048125267029
+	UIAspectRatioConstraint_1["Parent"] = Main
+	
+	local Left = Instance.new("Frame")
+	Left["BorderSizePixel"] = 0
+	Left["BackgroundColor3"] = Color3.fromRGB(10.000000353902578, 10.000000353902578, 10.000000353902578)
+	Left["Name"] = "Left"
+	Left["Size"] = UDim2.new(0.2501583695411682, 0, 0.913366436958313, 0)
+	Left["BackgroundTransparency"] = 1
+	Left["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	Left["Position"] = UDim2.new(0.004263971466571093, 0, 0.043316785246133804, 0)
+	Left["Parent"] = Frame
+	
+	local Frame_1 = Instance.new("ScrollingFrame")
+	Frame_1["Active"] = true
+	Frame_1["BorderSizePixel"] = 0
+	Frame_1["Name"] = "Frame"
+	Frame_1["Size"] = UDim2.new(1, 0, 0.9937794804573059, 0)
+	Frame_1["ScrollBarImageColor3"] = Color3.fromRGB(0, 0, 0)
+	Frame_1["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	Frame_1["ScrollBarThickness"] = 0
+	Frame_1["BackgroundTransparency"] = 1
+	Frame_1["Position"] = UDim2.new(-8.628197178950359e-08, 0, -4.135500475399567e-08, 0)
+	Frame_1["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
+	Frame_1["Parent"] = Left
+	
 
-    -- IMPROVEMENT: Top-right buttons container
-    local TopRightButtons = Instance.new("Frame")
-    TopRightButtons.Name = "TopRightButtons"
-    TopRightButtons.BackgroundTransparency = 1
-    TopRightButtons.Size = UDim2.new(0, 100, 0, 25)
-    TopRightButtons.Position = UDim2.new(1, -110, 0, 10)
-    TopRightButtons.Parent = ContentContainer
-    
-    local TopRightLayout = Instance.new("UIListLayout", TopRightButtons)
-    TopRightLayout.FillDirection = Enum.FillDirection.Horizontal
-    TopRightLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-    TopRightLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    TopRightLayout.Padding = UDim.new(0, 8)
+	local UIAspectRatioConstraint_2 = Instance.new("UIAspectRatioConstraint")
+	UIAspectRatioConstraint_2["AspectRatio"] = 0.48230084776878357
+	UIAspectRatioConstraint_2["Parent"] = Frame_1
+	
+	local UIListLayout = Instance.new("UIListLayout")
+	UIListLayout["HorizontalAlignment"] = Enum.HorizontalAlignment.Center
+	UIListLayout["Padding"] = UDim.new(0, 2)
+	UIListLayout["SortOrder"] = Enum.SortOrder.LayoutOrder
+	UIListLayout["Parent"] = Frame_1
+	
+	local UICorner_2 = Instance.new("UICorner")
+	UICorner_2["CornerRadius"] = UDim.new(0.029999999329447746, 0)
+	UICorner_2["Parent"] = Left
+	
+	local UIAspectRatioConstraint_3 = Instance.new("UIAspectRatioConstraint")
+	UIAspectRatioConstraint_3["AspectRatio"] = 0.4793006479740143
+	UIAspectRatioConstraint_3["Parent"] = Left
+	
+	local Right = Instance.new("Frame")
+	Right["BorderSizePixel"] = 0
+	Right["BackgroundColor3"] = Color3.fromRGB(10.000000353902578, 10.000000353902578, 10.000000353902578)
+	Right["Name"] = "Right"
+	Right["Size"] = UDim2.new(0.2501583397388458, 0, 0.9133663773536682, 0)
+	Right["BackgroundTransparency"] = 0.4000000059604645
+	Right["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	Right["Position"] = UDim2.new(0.7447751760482788, 0, 0.043316829949617386, 0)
+	Right["Parent"] = Frame
+	
+	local Frame_2 = Instance.new("ScrollingFrame")
+	Frame_2["Active"] = true
+	Frame_2["BorderSizePixel"] = 0
+	Frame_2["Name"] = "Frame"
+	Frame_2["Size"] = UDim2.new(0.9244498014450073, 0, 0.9186992049217224, 0)
+	Frame_2["ScrollBarImageColor3"] = Color3.fromRGB(0, 0, 0)
+	Frame_2["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	Frame_2["ScrollBarThickness"] = 6
+	Frame_2["BackgroundTransparency"] = 1
+	Frame_2["Position"] = UDim2.new(0.039578892290592194, 0, 0.06910569220781326, 0)
+	Frame_2["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
+	Frame_2["Parent"] = Right
 
-    -- Fullscreen Button
+	local UIListLayout_1 = Instance.new("UIListLayout")
+	UIListLayout_1["HorizontalAlignment"] = Enum.HorizontalAlignment.Center
+	UIListLayout_1["Padding"] = UDim.new(0, 4)
+	UIListLayout_1["SortOrder"] = Enum.SortOrder.LayoutOrder
+	UIListLayout_1["Parent"] = Frame_2
+	
+	local UIAspectRatioConstraint_4 = Instance.new("UIAspectRatioConstraint")
+	UIAspectRatioConstraint_4["AspectRatio"] = 0.48230084776878357
+	UIAspectRatioConstraint_4["Parent"] = Frame_2
+	
+    -- [[ FEATURE: Fullscreen Button ]]
     local FULLSCREEN = Instance.new("ImageButton")
     FULLSCREEN.Name = "FULLSCREEN"
     FULLSCREEN.BackgroundTransparency = 1
-    FULLSCREEN.Size = UDim2.new(0, 20, 0, 20)
+    FULLSCREEN.Size = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
+    FULLSCREEN.Position = UDim2.new(0.76, 0, 0.008, 0)
     FULLSCREEN.Image = "http://www.roblox.com/asset/?id=284412499" -- Expand icon
     FULLSCREEN.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    FULLSCREEN.Parent = TopRightButtons
-
-    -- IMPROVEMENT: Minimize Button (replaces old Exit button)
-	local MINIMIZE_WINDOW = Instance.new("ImageButton")
-	MINIMIZE_WINDOW.Name = "MINIMIZE_WINDOW"
-	MINIMIZE_WINDOW.BackgroundTransparency = 1
-	MINIMIZE_WINDOW.Size = UDim2.new(0, 20, 0, 20)
-    MINIMIZE_WINDOW.Image = "http://www.roblox.com/asset/?id=284412595" -- Minimize icon
-	MINIMIZE_WINDOW.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    MINIMIZE_WINDOW.Parent = TopRightButtons
+    FULLSCREEN.Parent = Right
 	
-    -- IMPROVEMENT: WindUI-style resizer handle in the bottom-right corner
-    local ResizeHandle = Instance.new("ImageButton")
+	local MINIMIZE = Instance.new("TextButton")
+	MINIMIZE["TextWrapped"] = true
+	MINIMIZE["BorderSizePixel"] = 0
+	MINIMIZE["Name"] = "MINIMIZE"
+	MINIMIZE["TextSize"] = 14
+	MINIMIZE["TextScaled"] = true
+	MINIMIZE["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
+	MINIMIZE["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+	MINIMIZE["Size"] = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
+	MINIMIZE["Position"] = UDim2.new(0.84, 0, 0.008, 0)
+	MINIMIZE["TextColor3"] = Color3.fromRGB(0, 0, 0)
+	MINIMIZE["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	MINIMIZE["Text"] = ""
+	MINIMIZE["Font"] = Enum.Font.SourceSans
+	MINIMIZE["Parent"] = Right
+	
+	local UITextSizeConstraint_2 = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint_2["MaxTextSize"] = 14
+	UITextSizeConstraint_2["Parent"] = MINIMIZE
+	
+	local UICorner_3 = Instance.new("UICorner")
+	UICorner_3["CornerRadius"] = UDim.new(1, 0)
+	UICorner_3["Parent"] = MINIMIZE
+	
+	local UIGradient = Instance.new("UIGradient")
+	UIGradient["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(145.00000655651093, 145.00000655651093, 10.000000353902578)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(191.00000381469727, 143.00000667572021, 0)) })
+	UIGradient["Parent"] = MINIMIZE
+	
+	local EXIT = Instance.new("TextButton")
+	EXIT["TextWrapped"] = true
+	EXIT["BorderSizePixel"] = 0
+	EXIT["Name"] = "EXIT"
+	EXIT["TextSize"] = 14
+	EXIT["TextScaled"] = true
+	EXIT["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
+	EXIT["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+	EXIT["Size"] = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
+	EXIT["Position"] = UDim2.new(0.92, 0, 0.008, 0)
+	EXIT["TextColor3"] = Color3.fromRGB(0, 0, 0)
+	EXIT["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	EXIT["Text"] = ""
+	EXIT["Font"] = Enum.Font.SourceSans
+	EXIT["Parent"] = Right
+	
+	local UITextSizeConstraint_3 = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint_3["MaxTextSize"] = 14
+	UITextSizeConstraint_3["Parent"] = EXIT
+	
+	local UICorner_4 = Instance.new("UICorner")
+	UICorner_4["CornerRadius"] = UDim.new(1, 0)
+	UICorner_4["Parent"] = EXIT
+	
+	local UIGradient_1 = Instance.new("UIGradient")
+	UIGradient_1["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(145.00000655651093, 6.000000117346644, 8.000000473111868)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(191.00000381469727, 0, 0)) })
+	UIGradient_1["Parent"] = EXIT
+	
+	local UICorner_5 = Instance.new("UICorner")
+	UICorner_5["CornerRadius"] = UDim.new(0.029999999329447746, 0)
+	UICorner_5["Parent"] = Right
+	
+	local UIAspectRatioConstraint_5 = Instance.new("UIAspectRatioConstraint")
+	UIAspectRatioConstraint_5["AspectRatio"] = 0.4793006479740143
+	UIAspectRatioConstraint_5["Parent"] = Right
+	
+    -- [[ FEATURE: Resizer Handle (Triangle) ]]
+    local ResizeHandle = Instance.new("ImageLabel")
     ResizeHandle.Name = "ResizeHandle"
     ResizeHandle.Image = "rbxassetid://5406592965" -- Triangle image
-    ResizeHandle.ImageColor3 = Color3.fromRGB(150, 150, 150)
-    ResizeHandle.ImageTransparency = 0.5
+    ResizeHandle.ImageColor3 = Color3.fromRGB(100, 100, 100)
     ResizeHandle.BackgroundTransparency = 1
     ResizeHandle.Rotation = 45
     ResizeHandle.AnchorPoint = Vector2.new(1, 1)
@@ -394,22 +507,11 @@ do -- Main UI
     ResizeHandle.Size = UDim2.new(0, 20, 0, 20)
     ResizeHandle.ZIndex = 10
     ResizeHandle.Parent = Frame
-end
-
--- IMPROVEMENT: Create an example Tab Button template
-do
-    local TabButton = Instance.new("TextButton")
-	TabButton.Name = "TabButton"
-	TabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	TabButton.Size = UDim2.new(0.9, 0, 0, 35)
-	TabButton.Font = Enum.Font.GothamSemibold
-	TabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-	TabButton.TextSize = 16
-    TabButton.Text = "Tab"
-	TabButton.Parent = Examples
-
-	local UICorner = Instance.new("UICorner", TabButton)
-	UICorner.CornerRadius = UDim.new(0, 6)
+    
+	local UIAspectRatioConstraint_6 = Instance.new("UIAspectRatioConstraint")
+	UIAspectRatioConstraint_6["AspectRatio"] = 1.9428621530532837
+	UIAspectRatioConstraint_6["Parent"] = UI
+	
 end
 
 do -- UI Elements
@@ -1070,7 +1172,7 @@ do -- UI Elements
 	Line["Name"] = "Line"
 	Line["Size"] = UDim2.new(0, 178, 0, 1)
 	Line["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	Line["Position"] = UDim2.new(0.01104770042002201, 0, 0.9710034132003784, 0)
+	Line["Position"] = UDim2.new(0.01104770042002201, 0, 0.9709985256195068, 0)
 	Line["Parent"] = ViewColor
 	
 	------------------------------------------------
@@ -1194,123 +1296,14 @@ do -- UI Functions
 	local _UIExist = tick()
 	local UIExist = function()
 		return (pcall(function()return Part.Name, Part.Parent~=nil and Part or error() end))
-    end
-    
-    -- IMPROVEMENT: New Tab function
-    function Library:Tab(Data)
-        Data = type(Data) == "table" and Data or {}
-		Data.Name = Data.Name or "Tab"
-
-        local tabObject = {
-            Name = Data.Name
-        }
-
-        -- Create the button for the tab bar
-        local tabButton = Examples.TabButton:Clone()
-        tabButton.Text = Data.Name
-        tabButton.Parent = UI.Frame.Main.TabBar
-        tabObject.Button = tabButton
-
-        -- Create the content page for the tab
-        local contentPage = Instance.new("ScrollingFrame")
-        contentPage.Name = Data.Name .. "_Content"
-        contentPage.Size = UDim2.new(1, 0, 1, 0)
-        contentPage.BackgroundTransparency = 1
-        contentPage.BorderSizePixel = 0
-        contentPage.ScrollBarThickness = 6
-        contentPage.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        contentPage.Visible = false -- Hide by default
-        contentPage.Parent = UI.Frame.Main.ContentContainer
-        tabObject.ContentPage = contentPage
-
-        local contentLayout = Instance.new("UIListLayout", contentPage)
-        contentLayout.Padding = UDim.new(0, 10)
-        contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-        table.insert(Library.Tabs, tabObject)
-
-        -- Handle tab selection
-        HandleEvent(tabButton.MouseButton1Click, function()
-            Library.CurrentTab = tabObject
-            for i, tab in ipairs(Library.Tabs) do
-                -- Update button appearance
-                local isSelected = (tab == tabObject)
-                TS:Create(tab.Button, TweenInfo.new(0.2), {
-                    BackgroundColor3 = isSelected and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(40, 40, 40),
-                    TextColor3 = isSelected and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 200, 200)
-                }):Play()
-
-                -- Show/hide content page
-                tab.ContentPage.Visible = isSelected
-            end
-        end)
-        
-        -- IMPROVEMENT: Add element creation methods to the tab object itself
-        function tabObject:Slider(...)
-            local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = tabObject
-            return Library:Slider(unpack(args))
-        end
-        function tabObject:Label(...)
-            local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = tabObject
-            return Library:Label(unpack(args))
-        end
-        function tabObject:Button(...)
-            local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = tabObject
-            return Library:Button(unpack(args))
-        end
-        function tabObject:Toggle(...)
-            local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = tabObject
-            return Library:Toggle(unpack(args))
-        end
-        function tabObject:Keybind(...)
-            local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = tabObject
-            return Library:Keybind(unpack(args))
-        end
-        function tabObject:Dropdown(...)
-            local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = tabObject
-            return Library:Dropdown(unpack(args))
-        end
-        function tabObject:Color(...)
-            local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = tabObject
-            return Library:Color(unpack(args))
-        end
-        function tabObject:Section(...)
-             local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = tabObject
-            return Library:Section(unpack(args))
-        end
-        
-        -- Select the first tab by default
-        if #Library.Tabs == 1 then
-            tabButton.MouseButton1Click:Fire()
-        end
-
-        return tabObject
-    end
+	end
 
 	function Library:Slider( Data: { Text: string, Tab: Frame, Callback: { text: string } }, Min: number, Max: number, Minimum: number, Maximum: number )
 
 		Data = type(Data)=="table" and Data or {}
 		Data.Name = Data.Name or Data.Text or "Example"
-		-- IMPROVEMENT: Parent to the tab's content page
-        Data.Tab = Data.Tab or Library.CurrentTab
-
+		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+	
 		Data.Min = Data.Min or Data.Minimum or Data.min or Data.minimum or 1
 		Data.Max = Data.Max or Data.Maximum or Data.max or Data.maximum or 10
 	
@@ -1332,14 +1325,15 @@ do -- UI Functions
 		SliderExample.ViewSlider.Label.Text = Data.Name
 		SliderExample.ViewSlider.Value.Text = `{Data.Min}/{Data.Max}`
 		SliderExample.ViewSlider.Position = Data.Position or SliderExample.ViewSlider.Position
-		SliderExample.Parent = Data.Tab.ContentPage
-
+		SliderExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+	
 		local bar = SliderExample
 		local viewSlider = bar.ViewSlider
 		
 		local isDragging = false
 		local prevalue = Data.Value
 	
+		-- 统一处理值更新和UI表现的函数
 		local function updateSlider(inputValue)
 			if not UIExist() then return; end
 			
@@ -1361,35 +1355,41 @@ do -- UI Functions
 			end
 		end
 	
+		-- 监听输入开始（鼠标按下或触摸开始）
 		HandleEvent(viewSlider.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				isDragging = true
+				-- 立即更新一次位置，以响应单击
 				local percent = (input.Position.X - viewSlider.AbsolutePosition.X) / viewSlider.AbsoluteSize.X
 				percent = math.clamp(percent, 0, 1)
-				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5)
+				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5) -- +0.5用于四舍五入
 				updateSlider(value)
 			end
 		end))
 	
+		-- 监听输入变化（鼠标移动或手指拖动）
 		HandleEvent(viewSlider.InputChanged:Connect(function(input)
 			if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 				local percent = (input.Position.X - viewSlider.AbsolutePosition.X) / viewSlider.AbsoluteSize.X
 				percent = math.clamp(percent, 0, 1)
-				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5)
+				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5) -- +0.5用于四舍五入
 				updateSlider(value)
 			end
 		end))
 	
+		-- 监听输入结束（鼠标松开或触摸结束）
 		HandleEvent(viewSlider.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				if isDragging and Data.WaitForMouse then
+					-- 在拖动结束后，如果设置了WaitForMouse，则触发回调
 					pcall(Data.Callback, tonumber(Data.Value), prevalue)
 					prevalue = tonumber(Data.Value)
 				end
 				isDragging = false
 			end
 		end))
-
+		
+		--=====================================
 		local SliderTable = { Object = viewSlider }
 	
 		function SliderTable:Set(value, nocall)
@@ -1430,15 +1430,15 @@ do -- UI Functions
 		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-        Data.Tab = Data.Tab or Library.CurrentTab
-
+		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+	
 		local LabelExample = Examples:FindFirstChild('Label')
 		if not LabelExample then return; end
 		
 		LabelExample = LabelExample:Clone()
 		LabelExample.Label.Text = Data.Text
-		LabelExample.Parent = Data.Tab.ContentPage
-
+		LabelExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		
 		local LabelTable = { Object = LabelExample.Label }
 		
 		function LabelTable:Get(value)
@@ -1461,7 +1461,7 @@ do -- UI Functions
 	
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-        Data.Tab = Data.Tab or Library.CurrentTab
+		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Callback = type(Data.Callback)=="function" and Data.Callback or function() end
 	
 		local ButtonExample = Examples:FindFirstChild('Button')
@@ -1470,8 +1470,8 @@ do -- UI Functions
 		ButtonExample = ButtonExample:Clone()
 		ButtonExample.Label.Text = Data.Text
 		local event = HandleEvent(ButtonExample.MouseButton1Click:Connect(Data.Callback))
-		ButtonExample.Parent = Data.Tab.ContentPage
-
+		ButtonExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+	
 		local ButtonTable = { Object = ButtonExample.Label }
 		
 		function ButtonTable:Callback()
@@ -1508,7 +1508,7 @@ do -- UI Functions
 		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-        Data.Tab = Data.Tab or Library.CurrentTab
+		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Value = (type(Data.Value)=="boolean" or false) and Data.Value or false
 		Data.Callback = type(Data.Callback)=="function" and Data.Callback or function() end
 	
@@ -1520,11 +1520,14 @@ do -- UI Functions
 		
 		ToggleExample = ToggleExample:Clone()
 		ToggleExample.ViewToggle.Label.Text = Data.Text
-		ToggleExample.Parent = Data.Tab.ContentPage
+		ToggleExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
 		
 		local ToggleConfig = {
 			
 			["true"] = function()
+				-- Position: {0, 0},{-0.02, 0}
+				-- Size: {0.475, 0},{1.014, 0}
+				-- ImageTransparency: 0.6
 				if Tweening then return; end
 				if not UIExist() then return; end
 				Tweening = true
@@ -1545,6 +1548,9 @@ do -- UI Functions
 			end,
 			
 			["false"] = function()
+				-- Position: {0.525, 0},{-0.02, 0}
+				-- Size: {0.475, 0},{1.014, 0}
+				-- ImageTransparency: .2
 				if Tweening then return; end
 				if not UIExist() then return; end
 				Tweening = true
@@ -1567,16 +1573,18 @@ do -- UI Functions
 		}
 		
 		ToggleConfig["nil"] = ToggleConfig["false"]
-
+		--------------
 		local ToggleHandler = (function(nocall)
 			local OldState = State
-			if State then 
+			if State then -- True, toggling false
 			    local called, message = pcall(ToggleConfig["true"])
 				if not called then
 					State = not State
 					warn("[ Linui Library: Toggle 'State' Bug ] "..Data.Name..": "..message)
 				end
-		    else 
+
+
+		    else -- False, toggling true
 			    local called, message = pcall(ToggleConfig["false"])
 				if not called then
 					State = not State
@@ -1598,7 +1606,7 @@ do -- UI Functions
 		if not UIExist() or not (pcall(function()return ToggleExample.ViewToggle.MouseButton1Click end)) then return; end
 		HandleEvent(ToggleExample.ViewToggle.MouseButton1Click, ToggleHandler)
 		HandleEvent(ToggleExample.ViewToggle.Button.MouseButton1Click, ToggleHandler)
-
+		--------------
 		local ToggleLibrary = { Object = ToggleExample.ViewToggle }
 		
 		function ToggleLibrary:Set(value)
@@ -1608,15 +1616,15 @@ do -- UI Functions
 		end
 		
 		function ToggleLibrary:Get()
-			repeat task.wait() until not Tweening
+			repeat task.wait() until not Tweening -- Waits incase player toggles the toggle
 			return State
 		end
 		
 		function ToggleLibrary:Toggle()
-			repeat task.wait() until not Tweening
+			repeat task.wait() until not Tweening -- Waits incase player toggles the toggle
 			ToggleHandler(State)
 		end
-
+		--------------
 		return ToggleLibrary
 	end
 	
@@ -1624,7 +1632,7 @@ do -- UI Functions
 		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Keybind"
-		Data.Tab = Data.Tab or Library.CurrentTab
+		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Value = (typeof(Data.Value)=="Enum" and Data.Value.Name) or (typeof(Data.Value)=="string" and Data.Value) or nil
 		Data.Value = type(Data.Value)=="string" and Data.Value or "K"
 		
@@ -1643,12 +1651,13 @@ do -- UI Functions
 		KeybindExample = KeybindExample:Clone()
 		KeybindExample.ViewKeybind.Label.Text = Data.Text
 		KeybindExample.ViewKeybind.Button.Text = Data.Value
-		KeybindExample.Parent = Data.Tab.ContentPage
+		KeybindExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
 
 
 		HandleEvent(UIS.InputBegan:Connect(function(keycode, chat)
 			if chat or KeyCooldown then return; end
 			KeyCooldown = true
+			-------------------------------------
 	
 			local keyname = (keycode["KeyCode"]["Name"] or ""):lower();
 			local real_keyname = (keycode["KeyCode"]["Name"] or "")
@@ -1665,7 +1674,7 @@ do -- UI Functions
 				KeyCooldown = false
 				return;
 			end
-
+			-------------------------------------
 			local upper = {}
 			local KBName = ""
 			
@@ -1686,11 +1695,11 @@ do -- UI Functions
 			else
 				KBName = real_keyname
 			end
-
+			-------------------------------------		
 			if not UIExist() then return; end
 			if WaitingForKey then			
 				
-				if keyname:find("movement") or keyname:find("space") then return end
+				if keyname:find("movement") or keyname:find("space") then return end -- Disgard any movement functions
 	
 				KeybindExample.ViewKeybind.Button.Text = KBName
 				local oldCurrentKey = CurrentKey
@@ -1757,14 +1766,14 @@ do -- UI Functions
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Dropdown"
 		Data.Data = type(Data.Data)=="table" and Data.Data or {}
-		Data.Tab = Data.Tab or Library.CurrentTab
+		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Callback = Data.Callback or function() end
 
 		local DropdownExample = Examples:FindFirstChild("Dropdown")
 		if not DropdownExample then return; end
 
 		DropdownExample = DropdownExample:Clone()
-		DropdownExample.Parent = Data.Tab.ContentPage
+		DropdownExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
 		
 		local Dropdown = DropdownExample.ViewDropdown
 		Dropdown.Label.Text = Data.Text
@@ -1926,7 +1935,7 @@ do -- UI Functions
 					Selected = btn
 
 					if not Data.KeepText then
-						pcall(function() Dropdown.Label.Text = value end) 
+						pcall(function() Dropdown.Label.Text = value end) -- IDK, ITS 4 AM
 					end
 
 					local passed, message = pcall(Data.Callback, value, oldSelName)
@@ -1968,7 +1977,7 @@ do -- UI Functions
 					end
 					return;
 				end
-
+				---------------
 				repeat task.wait() until not Cooldown
 				Cooldown = true
 	
@@ -2019,14 +2028,14 @@ do -- UI Functions
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Color"
 		Data.Data = type(Data.Data)=="table" and Data.Data or {}
-		Data.Tab = Data.Tab or Library.CurrentTab
+		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Callback = Data.Callback or function() end
 
 		local ColorExample = Examples:FindFirstChild("ColorPicker")
 		if not ColorExample then return; end
 
 		ColorExample = ColorExample:Clone()
-		ColorExample.Parent = Data.Tab.ContentPage
+		ColorExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
 		
 		local ViewColor = ColorExample:FindFirstChild("ViewColor")
 		ViewColor.Label.Text = Data.Text
@@ -2043,8 +2052,10 @@ do -- UI Functions
 		
 		local R, G, B = frame:FindFirstChild("R"), frame:FindFirstChild("G"), frame:FindFirstChild("B")
         
+        -- [[ MOBILE PATCH START: Color Picker Input ]]
 		local isDraggingWheel = false
         local isDraggingDarkness = false
+        -- [[ MOBILE PATCH END: Color Picker Input ]]
         
 		local colorlib = {}
 
@@ -2086,7 +2097,7 @@ do -- UI Functions
 			}):Play()
 			
 			darknessPicker.UIGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromHSV(h, s, 1)), 
+				ColorSequenceKeypoint.new(0, Color3.fromHSV(h, s, 1)), -- Use full brightness for the gradient
 				ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
 			}
 			
@@ -2125,6 +2136,7 @@ do -- UI Functions
 			ShowCooldown = false
 		end))
         
+        -- [[ MOBILE PATCH START: Color Picker Input Logic ]]
         HandleEvent(colourWheel.InputBegan, function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 isDraggingWheel = true
@@ -2152,7 +2164,9 @@ do -- UI Functions
                 isDraggingDarkness = false
             end
         end)
+        -- [[ MOBILE PATCH END: Color Picker Input Logic ]]
 
+		----------------------------------------
 		function colorlib:Set( color: Color3, nocall: boolean )
 			if typeof(color)=="Color3" then
 
@@ -2160,7 +2174,7 @@ do -- UI Functions
 					BackgroundColor3 = color
 				}):Play()
 
-				local _R, _G, _B = color.R * 255, color.G * 255, color.B * 255 
+				local _R, _G, _B = color.R * 255, color.G * 255, color.B * 255 -- I love complicating my code [ Im joking I did this for fun ]
 				_R, _G, _B = tostring(math.floor(_R + 0.5)), tostring(math.floor(_G + 0.5)), tostring(math.floor(_B + 0.5))
 	
 				if typeof(R)=="Instance" and R.ClassName:match("Text") then R.Text = _R end
@@ -2183,7 +2197,7 @@ do -- UI Functions
 		end
 
 		function colorlib:Get()
-			repeat task.wait(.06) until not (isDraggingWheel or isDraggingDarkness) 
+			repeat task.wait(.06) until not (isDraggingWheel or isDraggingDarkness) -- If they're picking a color, wait for them to be finished
 			return colourDisplay.BackgroundColor3
 		end
 
@@ -2195,72 +2209,125 @@ do -- UI Functions
 		return colorlib
 	end
 
-	function Library:Section(Data) 
-		Data = type(Data)=="table" and Data or {}
-        local name = Data.Name or "ExampleSection"
-        Data.Tab = Data.Tab or Library.CurrentTab
-
+	function Library:Section(name) 
+		
+		name = type(name)=="string" and name or "ExmapleSection"
 		local sectionLib = {}
 		local HideCooldown = false
 		
-		local SectionFrame = Examples:FindFirstChild("Section"):Clone()
-        SectionFrame.Name = name
-        SectionFrame.Label.Text = name
-        SectionFrame.Parent = Data.Tab.ContentPage
-        
-        -- Make the section's frame available for parenting elements
-        local contentFrame = SectionFrame:FindFirstChild("_Frame")
+		local Section = Instance.new("Frame")
+		local UICorner = Instance.new("UICorner")
+		local _Frame = Instance.new("ScrollingFrame")
+	
+		local Label = Instance.new("TextButton")
+		local Line = Instance.new("Frame")
+		
+		local UIListLayout = Instance.new("UIListLayout")
+		local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
+	
+		--Properties:
+	
+		Section.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+		Section.BackgroundTransparency = 0.400
+		Section.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Section.BorderSizePixel = 0
+		Section.Position = UDim2.new(-4.31409859e-08, 0, -1.04034665e-08, 0)
+		Section.Size = UDim2.new(1.00000012, 0, 0.259604543, 0)
+	
+		UICorner.CornerRadius = UDim.new(0, 0)
+		UICorner.Parent = Section
+	
+		_Frame.Name = "_Frame"
+		_Frame.Parent = Section
+		_Frame.Active = true
+		_Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		_Frame.BackgroundTransparency = 1.000
+		_Frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		_Frame.BorderSizePixel = 0
+		_Frame.Position = UDim2.new(0.0197910536, 0, 0.0965689346, 0)
+		_Frame.Size = UDim2.new(0.961277604, 0, 0.884780228, 0)
+		_Frame.ScrollBarThickness = 1
+	
+		Label.Name = "Label"
+		Label.Parent = Section
+		Label.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		Label.BackgroundTransparency = 1.000
+		Label.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Label.BorderSizePixel = 0
+		Label.Position = UDim2.new(0.0565457866, 0, 0.0130498558, 0)
+		Label.Size = UDim2.new(0.882113576, 0, 0.0574193671, 0)
+		Label.Text = name
+		Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		Label.TextScaled = true
+		Label.TextSize = 15.000
+		Label.TextWrapped = true
+	
+		UITextSizeConstraint.Parent = Label
+		UITextSizeConstraint.MaxTextSize = 14
+		
+		UIListLayout.Padding = UDim.new(0, 1)
+		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		UIListLayout.Parent = _Frame
+		
+		Line.Name = "Line"
+		Line.Parent = Section
+		Line.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		Line.BorderColor3 = Color3.fromRGB(255, 255, 255)
+		Line.Position = UDim2.new(0.353349507, 0, 0.0730726197, 0)
+		Line.Size = UDim2.new(0.292164683, 0, 0.00135501358, 0)
+		
+		local LeftSide = Frame:FindFirstChild("Left") or Frame:FindFirstChild("Right")
+		LeftSide = LeftSide and LeftSide:FindFirstChildOfClass("ScrollingFrame") or LeftSide
+		if not LeftSide then Section:Destroy(); return "Frame Componets not found!" end
+		
+		Section.Name = name
+		Section.Parent = LeftSide
+		handleChildSize(_Frame, _Frame)
 
-		function sectionLib:Slider(...)
-            local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = { ContentPage = contentFrame } -- Trick the function to parent inside the section
-			return Library:Slider(unpack(args))
+		function sectionLib:Slider(Data)
+			Data = type(Data)=="table" and Data or {}
+			Data.Tab = name
+			return Library:Slider(Data)
 		end
 		
-		function sectionLib:Label(...)
-			local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = { ContentPage = contentFrame }
-			return Library:Label(unpack(args))
+		function sectionLib:Label(Data)
+			Data = type(Data)=="table" and Data or {}
+			Data.Tab = name
+			return Library:Label(Data)
 		end
 		
-		function sectionLib:Button(...)
-			local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = { ContentPage = contentFrame }
-			return Library:Button(unpack(args))
+		function sectionLib:Button(Data)
+			Data = type(Data)=="table" and Data or {}
+			Data.Tab = name
+			return Library:Button(Data)
 		end
-		function sectionLib:Toggle(...)
-			local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = { ContentPage = contentFrame }
-			return Library:Toggle(unpack(args))
+		function sectionLib:Toggle(Data)
+			Data = type(Data)=="table" and Data or {}
+			Data.Tab = name
+			return Library:Toggle(Data)
 		end
-		function sectionLib:Keybind(...)
-			local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = { ContentPage = contentFrame }
-			return Library:Keybind(unpack(args))
+		function sectionLib:Keybind(Data)
+			Data = type(Data)=="table" and Data or {}
+			Data.Tab = name
+			return Library:Keybind(Data)
 		end
-		function sectionLib:Dropdown(...)
-			local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = { ContentPage = contentFrame }
-			return Library:Dropdown(unpack(args))
+		function sectionLib:Dropdown(Data)
+			Data = type(Data)=="table" and Data or {}
+			Data.Tab = name
+			return Library:Dropdown(Data)
 		end
-		function sectionLib:Color(...)
-			local args = {...}
-            args[1] = args[1] or {}
-            args[1].Tab = { ContentPage = contentFrame }
-			return Library:Color(unpack(args))
+		function sectionLib:Color(Data)
+			Data = type(Data)=="table" and Data or {}
+			Data.Tab = name
+			return Library:Color(Data)
 		end
 		function sectionLib:Hide()
-			SectionFrame.Parent = nil
+			Section.Parent = nil
 		end
 		
 		function sectionLib:Show()
-			SectionFrame.Parent = Data.Tab.ContentPage
+			Section.Parent = LeftSide
 		end
 
 		return sectionLib
@@ -2279,26 +2346,33 @@ local LookView = Vector3.new(0, .1, -11)
 local StoredTransparency = {}
 local PartIncreased = false
 
+-- [[ MOBILE PATCH START: SMOOTH UI TILT ]]
 local currentTiltX = 0
 local currentTiltY = 0
-local smoothingFactor = 0.1 
+local smoothingFactor = 0.1 -- 平滑系数。值越小，过渡越平滑 (推荐 0.05 到 0.2)
 
 Cache.add(game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
 	local mouse = game:GetService("Players").LocalPlayer:GetMouse()
 
+	-- 1. 计算目标倾斜角度
 	local targetTiltX = (mouse.X - mouse.ViewSizeX/2) * SCALE
 	local targetTiltY = (mouse.Y - mouse.ViewSizeY/2) * SCALE
 	
+	-- 2. 使用线性插值 (Lerp) 平滑地更新当前倾斜角度
 	currentTiltX = currentTiltX + (targetTiltX - currentTiltX) * smoothingFactor
 	currentTiltY = currentTiltY + (targetTiltY - currentTiltY) * smoothingFactor
 	
+	-- 3. 使用平滑后的角度来更新UI的CFrame
 	Part.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(LookView.X, LookView.Y, LookView.Z) * CFrame.Angles(0, math.rad(currentTiltX), 0) * CFrame.Angles(math.rad(currentTiltY) , 0 , 0)
 	
 end))
+-- [[ MOBILE PATCH END: SMOOTH UI TILT ]]
 
 
 -------------------------------------- Main Section
-local PlayerName = UI.Frame.Main.TabBar.PlayerName
+local Main = Frame.Main
+local PlayerViewport, PlayerName, Level, XP = Main:FindFirstChild("PlayerViewport"), Main:FindFirstChild("PlayerName"), Main:FindFirstChild("Level"), Main:FindFirstChild("XP")
+
 do -- PlayerName
 	task.spawn(function()
 		local Label = PlayerName
@@ -2334,46 +2408,65 @@ do -- PlayerName
 			EffectApplying = false
 
 		end
+		--===========================================
+		local HoverHandler = Label:WaitForChild("HoverHandler")
+
+		HoverHandler.MouseEnter:Connect(function()
+			Label:SetAttribute("Hover", true)
+		end)
+
+		HoverHandler.MouseLeave:Connect(function()
+			Label:SetAttribute("Hover", false)
+		end)
+		--===========================================
+		while task.wait() do
+			if Label:GetAttribute("Hover") then
+				TextRainbow()
+			end
+		end
 	end)
 end
 
 -------------------------------------- UI: Breathing, Config
 local AllFrames = Frame:GetChildren()
 
--- IMPROVEMENT: Fullscreen, Resizer, and Visibility Logic (WindUI Style)
+-- [[ FEATURE: Fullscreen, Resizer, and Visibility Logic ]]
 local isFullScreen = false
 local originalState = {}
 local fullscreenIcon = "http://www.roblox.com/asset/?id=284412499" -- Expand
 local normalIcon = "http://www.roblox.com/asset/?id=284412574" -- Shrink
 
-HandleEvent(UI.Frame.Main.ContentContainer.TopRightButtons.FULLSCREEN.MouseButton1Click, function()
+HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
     isFullScreen = not isFullScreen
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     
     if isFullScreen then
+        -- Save original state
         originalState.LookView = LookView
         originalState.Size = Part.Size
         originalState.Scale = SCALE
         
+        -- Animate to fullscreen
         local fullscreenProperties = {
-            Size = Vector3.new(35, 20, 2)
+            Size = Vector3.new(35, 20, 2) -- Fullscreen size
         }
         TS:Create(Part, tweenInfo, fullscreenProperties):Play()
-        LookView = Vector3.new(0, 0, -1.8)
-        SCALE = 0 
-        UI.Frame.Main.ContentContainer.TopRightButtons.FULLSCREEN.Image = normalIcon
+        LookView = Vector3.new(0, 0, -1.8) -- Move closer to camera
+        SCALE = 0 -- Disable tilt
+        UI.Frame.Right.FULLSCREEN.Image = normalIcon
     else
+        -- Animate back to original state
         TS:Create(Part, tweenInfo, {Size = originalState.Size}):Play()
         LookView = originalState.LookView
         SCALE = originalState.Scale
-        UI.Frame.Main.ContentContainer.TopRightButtons.FULLSCREEN.Image = fullscreenIcon
+        UI.Frame.Right.FULLSCREEN.Image = fullscreenIcon
     end
 end)
 
 local isResizing = false
 local initialMousePos, initialSize
-local minSize = Vector3.new(18, 10, 2) -- Set a minimum size
-local maxSize = Vector3.new(50, 30, 2) -- Set a maximum size
+local minSize = Vector3.new(15, 8, 2)
+local maxSize = Vector3.new(50, 30, 2)
 HandleEvent(UI.Frame.ResizeHandle.InputBegan, function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         isResizing = true
@@ -2389,7 +2482,6 @@ HandleEvent(UIS.InputChanged, function(input)
         
         local newSize = initialSize + Vector3.new(delta.X * 0.05, -delta.Y * 0.05, 0)
         
-        -- Clamp the size between min and max values
         newSize = Vector3.new(
             math.clamp(newSize.X, minSize.X, maxSize.X),
             math.clamp(newSize.Y, minSize.Y, maxSize.Y),
@@ -2405,8 +2497,32 @@ HandleEvent(UIS.InputEnded, function(input)
     end
 end)
 
--- IMPROVEMENT: New Minimize logic (replaces old Exit)
-HandleEvent(UI.Frame.Main.ContentContainer.TopRightButtons.MINIMIZE_WINDOW.MouseButton1Click, function()
+-- [[ FEATURE: New Minimize/Transparency Logic ]]
+local isFaded = false
+HandleEvent(UI.Frame.Right.MINIMIZE.MouseButton1Click, function()
+    if Config["FrameCooldown"] then return end
+    Config["FrameCooldown"] = true
+    isFaded = not isFaded
+    
+    local Time = 0.5
+    local targetTransparency = isFaded and 0.8 or 0
+    
+    for i,v in next, Frame:GetDescendants() do
+        if v:IsA("GuiObject") then
+            local props = {}
+            if v:IsA("TextLabel") or v:IsA("TextButton") then props.TextTransparency = targetTransparency end
+            if v:IsA("ImageLabel") or v:IsA("ImageButton") then props.ImageTransparency = targetTransparency end
+            if v:IsA("Frame") or v:IsA("ScrollingFrame") then props.BackgroundTransparency = (v.Name == "Line" and 1) or targetTransparency end
+            
+            TS:Create(v, TweenInfo.new(Time), props):Play()
+        end
+    end
+
+    task.wait(Time + 0.1)
+    Config["FrameCooldown"] = false
+end)
+
+HandleEvent(UI.Frame.Right.EXIT.MouseButton1Click, function()
     Frame.Visible = false
     if OpenButton then OpenButton.Visible = true end
 end)
@@ -2421,7 +2537,7 @@ do -- Breathing
 	WrapFunction(function()
 		Loop(function()
 			if not Config.Breathing and started==PartIncreased then return; end
-            if isFullScreen then return end
+            if isFullScreen then return end -- Don't breathe in fullscreen
 			TS:Create(Part, TweenInfo.new(waitTime), { Size = Part.Size + (PartIncreased and Vector3.new(-X, -Y, -Z) or Vector3.new(X, Y, Z)) }):Play()
 			task.wait(waitTime)
 			PartIncreased = not PartIncreased
@@ -2431,7 +2547,7 @@ do -- Breathing
 end
 
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
-setmetatable(Library, {
+setmetatable(Library, { -- Config Manager
 	__index = function(self, value)
 		if(value=="config") then
 			return Config
@@ -2441,7 +2557,8 @@ setmetatable(Library, {
 	__newindex = function(self, base, value)
 		if base == "Text" and type(value)=="string" then
 			return pcall(function()
-				UI.Frame.Main.TabBar.PlayerName.Text = value
+				UI.Frame.Main.PlayerName:SetAttribute("Text", value)
+				UI.Frame.Main.PlayerName.Text = value
                 if OpenButton then OpenButton.Text = value end
 			end)
 		end
@@ -2450,31 +2567,37 @@ setmetatable(Library, {
 })
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function Library:Config()
-    -- Create a settings tab
-    local settingsTab = self:Tab({ Name = "Settings" })
 	
-	settingsTab:Toggle({ Text = "Breathing", Value = type(Storage.Data["LinenLib_Breathing"])=="nil" and true or Storage.Data["LinenLib_Breathing"], Callback = function(value) Storage.Data["LinenLib_Breathing"] = value; Config.Breathing = value end })
-	settingsTab:Toggle({ Text = "Always On Top", Value = type(Storage.Data["LinenLib_AOT"])=="nil" and true or Storage.Data["LinenLib_AOT"], Callback = function(value) Storage.Data["LinenLib_AOT"] = value;UI["AlwaysOnTop"] = value end })
-	settingsTab:Keybind({ Text = "Toggle Key", Value = Storage.Data["LinenLib_Toggle"] or "RightShift", Callback = function() end, OnChange = function(key) Config.ToggleKey = Enum.KeyCode[key] or Enum.KeyCode.RightShift end })
+	Config.Breathing = Storage.Data["LinenLib_Breathing"]
+	Library:Toggle({ Text = "Breathing", Value = type(Storage.Data["LinenLib_Breathing"])=="nil" and true or Storage.Data["LinenLib_Breathing"], Callback = function(value) Storage.Data["LinenLib_Breathing"] = value; Config.Breathing = value end })
+	Library:Toggle({ Text = "Always On Top", Value = type(Storage.Data["LinenLib_AOT"])=="nil" and true or Storage.Data["LinenLib_AOT"], Callback = function(value) Storage.Data["LinenLib_AOT"] = value;UI["AlwaysOnTop"] = value end })
+	Library:Keybind({ Text = "Toggle Key", Value = Storage.Data["LinenLib_Toggle"] or "RightShift", Callback = function() end, OnChange = function(key) Config.ToggleKey = Enum.KeyCode[key] or Enum.KeyCode.RightShift end })
 	
-	settingsTab:Slider({
-		Text = "Z",
+	--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	Library:Slider({
+		Text = "Z", -- Text of Slider
+	
 		Min = 1,
 		Value = Storage.Data["LinenLib_Z"] or math.abs(LookView.Z),
 		Max = 40,
+	
 		WaitForMouse = true,
+	
 		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_Z"]  = value
 			LookView = Vector3.new(LookView.X, LookView.Y, -value)
 		end,
 	})
 	
-	settingsTab:Slider({
+	Library:Slider({
 		Text = "Y",
+	
 		Min = 0,
 		Value = Storage.Data["LinenLib_Y"] or 0,
 		Max = 5,
+	
 		WaitForMouse = true,
+	
 		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_Y"] = value
 			if value~=prevalue then
@@ -2483,40 +2606,62 @@ function Library:Config()
 		end,
 	}):Set(Storage.Data["LinenLib_Y"])
 	
-	settingsTab:Slider({
-		Text = "R",
+	Library:Slider({
+	
+		Text = "R", -- Text of Slider
 		Step = 1,
+	
 		Min = ( 0.01 * 100 ),
 		Value = Storage.Data["LinenLib_R"] or SCALE * 100,
 		Max = 21,
+	
 		WaitForMouse = true,
+	
 		Callback = function(value)
 			Storage.Data["LinenLib_R"] = value
 			SCALE = value/100
 		end,
+	
 	})
 	
-	settingsTab:Slider({
+	Library:Slider({
+	
 		Text = "G",
 		Step = 1,
+	
 		Min = 1,
 		Value = Storage.Data["LinenLib_G"] or 6,
 		Max = 20,
+	
 		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_G"] = value
-            UI.Frame.Main.TabBar.UIListLayout.Padding = UDim.new(0, value)
-            for i,tab in pairs(Library.Tabs) do
-                tab.ContentPage.UIListLayout.Padding = UDim.new(0, value)
-            end
+			for i,v in next, AllFrames do
+				if v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton") or v:IsA("ScrollingFrame") then
+					local Layout;
+	
+					for a, b in next, v:GetDescendants() do
+						if b:IsA("UIListLayout") then
+							Layout = b
+							break;
+						end
+					end
+	
+					if Layout then
+						Layout.Padding = UDim.new(0, value)
+					end
+				end
+			end
 		end,
+	
 	})
 	return Library
 end
 
 Library.Frame = Frame
 Library.Storage = Storage
+Library:Config() -- Loads settings
 
--- IMPROVEMENT: Create the draggable open button (WindUI style)
+-- [[ WindUI Style Open Button ]]
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 OpenButton = Instance.new("TextButton", ScreenGui)
 OpenButton.Text = "Linui"
@@ -2549,8 +2694,6 @@ HandleEvent(UIS.InputBegan, function(input, gameProcessed)
     end
 end)
 
--- Initialize settings tab
-Library:Config()
 
 -- .<(:D _^_ D:)>.
 return Library
