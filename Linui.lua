@@ -15,7 +15,7 @@
 ]]
 
 -- 2000+ Lines, crazy isn't it?
--- Version: 1.1 (Mobile Patched)
+-- Version: 1.2 (Full Mobile Optimization)
 STRING = "Fixes:"
 --[[
 	* Fixed UI click-related bugs
@@ -28,7 +28,7 @@ STRING = "Fixes:"
 STRING = "Updates:"
 --[[
 	* Added Colorpicker
-    * Patched for mobile experience (Slider and UI hiding)
+    * Patched for mobile experience (Slider, UI hiding, and smooth tilting)
 ]]
 
 local __original_require = require
@@ -2302,22 +2302,32 @@ local UIS = game:GetService("UserInputService")
 local StoredTransparency = {}
 local PartIncreased = false
 
+-- [[ MOBILE PATCH START: SMOOTH UI TILT ]]
+local currentTiltX = 0
+local currentTiltY = 0
+local smoothingFactor = 0.1 -- 平滑系数。值越小，过渡越平滑 (推荐 0.05 到 0.2)
+
 Cache.add(game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
 	local mouse = game:GetService("Players").LocalPlayer:GetMouse()
 
-	local sizeX = mouse.ViewSizeX
-	local sizeY = mouse.ViewSizeY
-
-	local mouseX = (mouse.X-mouse.ViewSizeX/2) * SCALE
-	local mouseY = (mouse.Y-mouse.ViewSizeY/2) * SCALE
+	-- 1. 计算目标倾斜角度
+	local targetTiltX = (mouse.X - mouse.ViewSizeX/2) * SCALE
+	local targetTiltY = (mouse.Y - mouse.ViewSizeY/2) * SCALE
 	
-	TS:Create(Part, TweenInfo.new(deltaTime), { CFrame =  workspace.CurrentCamera.CFrame * CFrame.new(LookView.X, LookView.Y, LookView.Z) * CFrame.Angles(0, math.rad(mouseX), 0) * CFrame.Angles(math.rad(mouseY) , 0 , 0) }):Play()
+	-- 2. 使用线性插值 (Lerp) 平滑地更新当前倾斜角度
+	--    每一帧，当前角度都会向目标角度靠近 smoothingFactor 的距离
+	currentTiltX = currentTiltX + (targetTiltX - currentTiltX) * smoothingFactor
+	currentTiltY = currentTiltY + (targetTiltY - currentTiltY) * smoothingFactor
 	
-	task.wait(deltaTime)
+	-- 3. 使用平滑后的角度来更新UI的CFrame
+	--    注意：我们不再需要每帧都创建一个新的Tween，直接设置CFrame即可
+	Part.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(LookView.X, LookView.Y, LookView.Z) * CFrame.Angles(0, math.rad(currentTiltX), 0) * CFrame.Angles(math.rad(currentTiltY) , 0 , 0)
+	
 	local scalingFactor = (workspace.CurrentCamera.CFrame.Position - Part.CFrame.Position).Magnitude - LookView.Z	
 	--Part.Size = Part.Size / Vector3.new(scalingFactor, 0, scalingFactor)
 
 end))
+-- [[ MOBILE PATCH END: SMOOTH UI TILT ]]
 
 
 -------------------------------------- Main Section
