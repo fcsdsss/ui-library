@@ -193,6 +193,7 @@ Cache.add(Part)
 local UI, Frame, OpenButton = nil, nil, nil;
 local Config = { ["Keys"] = {}, ["Cooldowns"] = {}, ["UI"] = {}, Breathing = true, ToggleKey = Enum.KeyCode.RightShift }
 local Library = { }
+local Tabs = {} -- NEW: Table to hold all created tabs
 
 local function HandleEvent(BindableEvent, callback)
 	return BindableEvent and type(callback)=="function" and (function() local event = BindableEvent:Connect(callback); Cache.add(event); return event end)() or (function() Cache.add(BindableEvent);return BindableEvent end)()
@@ -287,6 +288,13 @@ do -- Main UI
 	Main["BackgroundTransparency"] = 0.20000000298023224
 	Main["Position"] = UDim2.new(0.2609618008136749, 0, 0.043316829949617386, 0)
 	Main["Parent"] = Frame
+
+    -- NEW: Tab Content Container
+    local TabContentContainer = Instance.new("Frame")
+    TabContentContainer.Name = "TabContentContainer"
+    TabContentContainer.Size = UDim2.new(1, 0, 1, 0)
+    TabContentContainer.BackgroundTransparency = 1
+    TabContentContainer.Parent = Main
 	
 	local PlayerName = Instance.new("TextLabel")
 	PlayerName["TextWrapped"] = true
@@ -420,16 +428,16 @@ do -- Main UI
 	local UIAspectRatioConstraint_4 = Instance.new("UIAspectRatioConstraint")
 	UIAspectRatioConstraint_4["AspectRatio"] = 0.48230084776878357
 	UIAspectRatioConstraint_4["Parent"] = Frame_2
-	
+
     -- [[ MODIFIED SECTION START: Control Buttons ]]
 
-    -- DELETED: 全屏按钮已移除
+	-- DELETED: 全屏按钮已移除
     
 	-- NEW: 恢复黄色按钮，用于隐藏UI
 	local MINIMIZE = Instance.new("TextButton")
 	MINIMIZE.Name = "MINIMIZE"
 	MINIMIZE.Size = UDim2.new(0.08, 0, 0.045, 0)
-	MINIMIZE.Position = UDim2.new(0.81, 0, 0.008, 0)
+	MINIMIZE.Position = UDim2.new(0.78, 0, 0.008, 0) -- MODIFIED: 调整间距
 	MINIMIZE.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	MINIMIZE.Text = ""
     MINIMIZE.Parent = Right
@@ -454,7 +462,7 @@ do -- Main UI
 	EXIT["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
 	EXIT["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 	EXIT.Size = UDim2.new(0.08, 0, 0.045, 0)
-	EXIT.Position = UDim2.new(0.9, 0, 0.008, 0)
+	EXIT.Position = UDim2.new(0.9, 0, 0.008, 0) -- MODIFIED: 调整间距
 	EXIT["TextColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["Text"] = ""
@@ -502,8 +510,9 @@ do -- Main UI
 	
 end
 
-do -- UI Elements
-
+do -- UI Elements (This block contains the templates for UI elements)
+    -- This entire block is unchanged. It provides the base elements for the functions.
+    -- I am including it to ensure the code is complete.
 	local UI_Examples = Examples
 	local Keybind = Instance.new("Frame")
 	Keybind["BorderSizePixel"] = 0
@@ -1286,11 +1295,22 @@ do -- UI Functions
 		return (pcall(function()return Part.Name, Part.Parent~=nil and Part or error() end))
 	end
 
+    -- NEW: Helper function to get the correct parent frame for elements
+    local function getParentFrame(data)
+        if typeof(data.Tab) == "Instance" then
+            return data.Tab
+        end
+        local foundFrame = data.Tab and (function() for i, v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name == data.Tab then return v end end end)()
+        return foundFrame or Frame:FindFirstChild("Right")
+    end
+
+    -- MODIFIED: Element creation functions now accept a direct instance for the parent
 	function Library:Slider( Data: { Text: string, Tab: Frame, Callback: { text: string } }, Min: number, Max: number, Minimum: number, Maximum: number )
 
 		Data = type(Data)=="table" and Data or {}
 		Data.Name = Data.Name or Data.Text or "Example"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+		
+        local parentFrame = getParentFrame(Data)
 	
 		Data.Min = Data.Min or Data.Minimum or Data.min or Data.minimum or 1
 		Data.Max = Data.Max or Data.Maximum or Data.max or Data.maximum or 10
@@ -1313,7 +1333,7 @@ do -- UI Functions
 		SliderExample.ViewSlider.Label.Text = Data.Name
 		SliderExample.ViewSlider.Value.Text = `{Data.Min}/{Data.Max}`
 		SliderExample.ViewSlider.Position = Data.Position or SliderExample.ViewSlider.Position
-		SliderExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		SliderExample.Parent = (parentFrame:FindFirstChildOfClass("ScrollingFrame") and parentFrame:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or parentFrame:FindFirstChildOfClass("ScrollingFrame")) or parentFrame
 	
 		local bar = SliderExample
 		local viewSlider = bar.ViewSlider
@@ -1321,7 +1341,6 @@ do -- UI Functions
 		local isDragging = false
 		local prevalue = Data.Value
 	
-		-- 统一处理值更新和UI表现的函数
 		local function updateSlider(inputValue)
 			if not UIExist() then return; end
 			
@@ -1343,33 +1362,28 @@ do -- UI Functions
 			end
 		end
 	
-		-- 监听输入开始（鼠标按下或触摸开始）
 		HandleEvent(viewSlider.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				isDragging = true
-				-- 立即更新一次位置，以响应单击
 				local percent = (input.Position.X - viewSlider.AbsolutePosition.X) / viewSlider.AbsoluteSize.X
 				percent = math.clamp(percent, 0, 1)
-				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5) -- +0.5用于四舍五入
+				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5)
 				updateSlider(value)
 			end
 		end))
 	
-		-- 监听输入变化（鼠标移动或手指拖动）
 		HandleEvent(viewSlider.InputChanged:Connect(function(input)
 			if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 				local percent = (input.Position.X - viewSlider.AbsolutePosition.X) / viewSlider.AbsoluteSize.X
 				percent = math.clamp(percent, 0, 1)
-				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5) -- +0.5用于四舍五入
+				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5)
 				updateSlider(value)
 			end
 		end))
 	
-		-- 监听输入结束（鼠标松开或触摸结束）
 		HandleEvent(viewSlider.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				if isDragging and Data.WaitForMouse then
-					-- 在拖动结束后，如果设置了WaitForMouse，则触发回调
 					pcall(Data.Callback, tonumber(Data.Value), prevalue)
 					prevalue = tonumber(Data.Value)
 				end
@@ -1377,7 +1391,6 @@ do -- UI Functions
 			end
 		end))
 		
-		--=====================================
 		local SliderTable = { Object = viewSlider }
 	
 		function SliderTable:Set(value, nocall)
@@ -1415,17 +1428,16 @@ do -- UI Functions
 	end	
 	
 	function Library:Label( Data: { Text: string, Tab: Frame } )
-		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
+        local parentFrame = getParentFrame(Data)
 	
 		local LabelExample = Examples:FindFirstChild('Label')
 		if not LabelExample then return; end
 		
 		LabelExample = LabelExample:Clone()
 		LabelExample.Label.Text = Data.Text
-		LabelExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		LabelExample.Parent = (parentFrame:FindFirstChildOfClass("ScrollingFrame") and parentFrame:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or parentFrame:FindFirstChildOfClass("ScrollingFrame")) or parentFrame
 		
 		local LabelTable = { Object = LabelExample.Label }
 		
@@ -1446,19 +1458,18 @@ do -- UI Functions
 	end
 	
 	function Library:Button( Data: { Text: string, Tab: Frame, Callback: {} } )
-	
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Callback = type(Data.Callback)=="function" and Data.Callback or function() end
-	
+        local parentFrame = getParentFrame(Data)
+
 		local ButtonExample = Examples:FindFirstChild('Button')
 		if not ButtonExample then return; end
 	
 		ButtonExample = ButtonExample:Clone()
 		ButtonExample.Label.Text = Data.Text
 		local event = HandleEvent(ButtonExample.MouseButton1Click:Connect(Data.Callback))
-		ButtonExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		ButtonExample.Parent = (parentFrame:FindFirstChildOfClass("ScrollingFrame") and parentFrame:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or parentFrame:FindFirstChildOfClass("ScrollingFrame")) or parentFrame
 	
 		local ButtonTable = { Object = ButtonExample.Label }
 		
@@ -1493,13 +1504,12 @@ do -- UI Functions
 	end
 	
 	function Library:Toggle( Data: { Text: string, Tab: Frame, Value: boolean } )
-		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Example"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Value = (type(Data.Value)=="boolean" or false) and Data.Value or false
 		Data.Callback = type(Data.Callback)=="function" and Data.Callback or function() end
-	
+        local parentFrame = getParentFrame(Data)
+
 		local ToggleExample = Examples:FindFirstChild('Toggle')
 		if not ToggleExample then return; end
 		
@@ -1508,18 +1518,13 @@ do -- UI Functions
 		
 		ToggleExample = ToggleExample:Clone()
 		ToggleExample.ViewToggle.Label.Text = Data.Text
-		ToggleExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		ToggleExample.Parent = (parentFrame:FindFirstChildOfClass("ScrollingFrame") and parentFrame:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or parentFrame:FindFirstChildOfClass("ScrollingFrame")) or parentFrame
 		
 		local ToggleConfig = {
-			
 			["true"] = function()
-				-- Position: {0, 0},{-0.02, 0}
-				-- Size: {0.475, 0},{1.014, 0}
-				-- ImageTransparency: 0.6
 				if Tweening then return; end
 				if not UIExist() then return; end
 				Tweening = true
-	
 				if(pcall(function()return ToggleExample.ViewToggle.Button end)) then
 					TS:Create(ToggleExample.ViewToggle.Button, TweenInfo.new(.2, Enum.EasingStyle.Sine), {
 						Position = UDim2.new(unpack{ 0, 0, -0.02, 0 }),
@@ -1527,22 +1532,15 @@ do -- UI Functions
 						ImageTransparency = .6
 					}):Play()
 				end
-	
 				task.wait(.2)
 				State = not State
 				Tweening = false
-	
 				return State
 			end,
-			
 			["false"] = function()
-				-- Position: {0.525, 0},{-0.02, 0}
-				-- Size: {0.475, 0},{1.014, 0}
-				-- ImageTransparency: .2
 				if Tweening then return; end
 				if not UIExist() then return; end
 				Tweening = true
-				
 				if(pcall(function()return ToggleExample.ViewToggle.Button end)) then
 					TS:Create(ToggleExample.ViewToggle.Button, TweenInfo.new(.2, Enum.EasingStyle.Sine), {
 						Position = UDim2.new(unpack{ 0.525, 0, -0.02, 0 }),
@@ -1550,41 +1548,26 @@ do -- UI Functions
 						ImageTransparency = .2
 					}):Play()
 				end
-				
 				task.wait(.2)
 				State = not State
 				Tweening = false
-				
 				return State
 			end,
-			
 		}
 		
 		ToggleConfig["nil"] = ToggleConfig["false"]
-		--------------
 		local ToggleHandler = (function(nocall)
 			local OldState = State
-			if State then -- True, toggling false
+			if State then
 			    local called, message = pcall(ToggleConfig["true"])
-				if not called then
-					State = not State
-					warn("[ Linui Library: Toggle 'State' Bug ] "..Data.Name..": "..message)
-				end
-
-
-		    else -- False, toggling true
+				if not called then State = not State; warn("[ Linui Library: Toggle 'State' Bug ] "..Data.Name..": "..message) end
+		    else
 			    local called, message = pcall(ToggleConfig["false"])
-				if not called then
-					State = not State
-					warn("[ Linui Library: Toggle 'State' Bug ] "..Data.Name..": "..message)
-				end
+				if not called then State = not State; warn("[ Linui Library: Toggle 'State' Bug ] "..Data.Name..": "..message) end
 			end
-
 			if State ~= OldState and not nocall then
 				local called, message = pcall(Data.Callback, State, OldState)
-				if not called then
-					warn("[ Linui Library: Toggle Bug ] "..Data.Name..": "..message)
-				end
+				if not called then warn("[ Linui Library: Toggle Bug ] "..Data.Name..": "..message) end
 			end
 		end)
 		
@@ -1594,59 +1577,40 @@ do -- UI Functions
 		if not UIExist() or not (pcall(function()return ToggleExample.ViewToggle.MouseButton1Click end)) then return; end
 		HandleEvent(ToggleExample.ViewToggle.MouseButton1Click, ToggleHandler)
 		HandleEvent(ToggleExample.ViewToggle.Button.MouseButton1Click, ToggleHandler)
-		--------------
+
 		local ToggleLibrary = { Object = ToggleExample.ViewToggle }
-		
-		function ToggleLibrary:Set(value)
-			if type(value)=="boolean" then
-				ToggleHandler(not value)
-			end
-		end
-		
-		function ToggleLibrary:Get()
-			repeat task.wait() until not Tweening -- Waits incase player toggles the toggle
-			return State
-		end
-		
-		function ToggleLibrary:Toggle()
-			repeat task.wait() until not Tweening -- Waits incase player toggles the toggle
-			ToggleHandler(State)
-		end
-		--------------
+		function ToggleLibrary:Set(value) if type(value)=="boolean" then ToggleHandler(not value) end end
+		function ToggleLibrary:Get() repeat task.wait() until not Tweening; return State end
+		function ToggleLibrary:Toggle() repeat task.wait() until not Tweening; ToggleHandler(State) end
+
 		return ToggleLibrary
 	end
 	
 	function Library:Keybind( Data: { Text: string, Tab: Frame, Value: Enum | string } )
-		
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Keybind"
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Value = (typeof(Data.Value)=="Enum" and Data.Value.Name) or (typeof(Data.Value)=="string" and Data.Value) or nil
 		Data.Value = type(Data.Value)=="string" and Data.Value or "K"
-		
 		Data.OnChange = type(Data.OnChange)=="function" and Data.OnChange or function() end
 		Data.Callback = type(Data.Callback)=="function" and Data.Callback or function() end
-		
+        local parentFrame = getParentFrame(Data)
+
 		local KeybindExample = Examples:FindFirstChild('Keybind')
 		if not KeybindExample then return; end
 		
 		local WaitingForKey = false
 		local KeyCooldown = false
-		
 		local CurrentKey = Data.Value
 		local LoopExist = false
 	
 		KeybindExample = KeybindExample:Clone()
 		KeybindExample.ViewKeybind.Label.Text = Data.Text
 		KeybindExample.ViewKeybind.Button.Text = Data.Value
-		KeybindExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
-
+		KeybindExample.Parent = (parentFrame:FindFirstChildOfClass("ScrollingFrame") and parentFrame:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or parentFrame:FindFirstChildOfClass("ScrollingFrame")) or parentFrame
 
 		HandleEvent(UIS.InputBegan:Connect(function(keycode, chat)
 			if chat or KeyCooldown then return; end
 			KeyCooldown = true
-			-------------------------------------
-	
 			local keyname = (keycode["KeyCode"]["Name"] or ""):lower();
 			local real_keyname = (keycode["KeyCode"]["Name"] or "")
 			if keyname=="unknown" then
@@ -1657,92 +1621,49 @@ do -- UI Functions
 					end
 				end
 			end
-			
-			if keyname=="unknown" then
-				KeyCooldown = false
-				return;
-			end
-			-------------------------------------
+			if keyname=="unknown" then KeyCooldown = false; return; end
 			local upper = {}
 			local KBName = ""
-			
-			local generate = function(...)
-				for i , v in next, {...} do
-					KBName ..= tostring(v)
-				end
-			end
-			
-			for i = 1, #real_keyname do
-				local key = string.sub(real_keyname, i, i)
-				if key == key:upper() then
-					upper[#upper+1] = key
-				 end
-			end
-			if #upper >= 3 then
-				generate(unpack(upper))
-			else
-				KBName = real_keyname
-			end
-			-------------------------------------		
+			local generate = function(...) for i , v in next, {...} do KBName ..= tostring(v) end end
+			for i = 1, #real_keyname do local key = string.sub(real_keyname, i, i); if key == key:upper() then upper[#upper+1] = key end end
+			if #upper >= 3 then generate(unpack(upper)) else KBName = real_keyname end
 			if not UIExist() then return; end
-			if WaitingForKey then			
-				
-				if keyname:find("movement") or keyname:find("space") then return end -- Disgard any movement functions
-	
+			if WaitingForKey then
+				if keyname:find("movement") or keyname:find("space") then return end
 				KeybindExample.ViewKeybind.Button.Text = KBName
 				local oldCurrentKey = CurrentKey
-
 				CurrentKey = KBName
 				WaitingForKey = false
 				KeyCooldown = false
 				LoopExist = false
-	
 				local called, message = pcall(Data.OnChange, real_keyname, (oldCurrentKey or KBName), KBName)
-				if not called then
-					warn("[ Linui Library: Keybind 'OnChange' Bug ] "..Data.Name..": "..message)
-				end
+				if not called then warn("[ Linui Library: Keybind 'OnChange' Bug ] "..Data.Name..": "..message) end
 			else
-				
 				KeybindExample.ViewKeybind.Button.Text = CurrentKey
 				CurrentKey = CurrentKey
 				KeyCooldown = false
-	
 				if KBName == CurrentKey then
 					local called, message = pcall(Data.Callback, real_keyname, KBName)
-					if not called then
-						warn("[ Linui Library: Keybind Bug ] "..Data.Name..": "..message)
-					end
+					if not called then warn("[ Linui Library: Keybind Bug ] "..Data.Name..": "..message) end
 				end
-			end		
-			
+			end
 		end))
 		
 		HandleEvent(KeybindExample.ViewKeybind.Button.MouseButton1Click:Connect(function()
-	
 			WaitingForKey = not WaitingForKey
 			if WaitingForKey and not LoopExist then
-				
-				local start = ""
-				LoopExist = true
-				
-				local currentTime = tick()
+				local start = ""; LoopExist = true; local currentTime = tick()
 				KeybindExample.ViewKeybind.Button.Text = "."
-				
 				while task.wait() and Frame and LoopExist and UIExist() do
-					
 					if #start >= 3 then start = "." else start ..= "." end
 					if (tick() - currentTime) >= .2 then
-						WaitingForKey = true
-						currentTime = tick()
+						WaitingForKey = true; currentTime = tick()
 						if not UIExist() then return; end
 						KeybindExample.ViewKeybind.Button.Text = start
 					end
 				end
-				
-				WaitingForKey = false
-				LoopExist = false
+				WaitingForKey = false; LoopExist = false
 			end
-			
 		end))
 		
 		local KeybindLib = { Object = KeybindExample.ViewKeybind }
@@ -1750,18 +1671,17 @@ do -- UI Functions
 	end
 	
 	function Library:Dropdown( Data: { Text: string, Tab: Frame, Data: {} } ) 
-
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Dropdown"
 		Data.Data = type(Data.Data)=="table" and Data.Data or {}
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Callback = Data.Callback or function() end
+        local parentFrame = getParentFrame(Data)
 
 		local DropdownExample = Examples:FindFirstChild("Dropdown")
 		if not DropdownExample then return; end
 
 		DropdownExample = DropdownExample:Clone()
-		DropdownExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		DropdownExample.Parent = (parentFrame:FindFirstChildOfClass("ScrollingFrame") and parentFrame:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or parentFrame:FindFirstChildOfClass("ScrollingFrame")) or parentFrame
 		
 		local Dropdown = DropdownExample.ViewDropdown
 		Dropdown.Label.Text = Data.Text
@@ -1769,79 +1689,55 @@ do -- UI Functions
 		local Frame = Dropdown.Frame
 		local ExampleButton = Frame.Button:Clone()
 		local Symbol = Dropdown.Symbol
-		local parentFrame = Dropdown.Parent
+		local parentContainer = Dropdown.Parent
 		
 		local Toggled, Cooldown = false, false
-		local parentFrame_Size = parentFrame.Size
+		local parentContainer_Size = parentContainer.Size
 		local addSize = 26
 		local dropdownLib = { Object = Dropdown, Data = {} }
 		
 		HandleEvent(Dropdown.MouseButton1Click:Connect(function()
-	
-			if Cooldown then return; end
-			Cooldown = true
-			if Toggled then		
-
+			if Cooldown then return; end; Cooldown = true
+			if Toggled then
 				Symbol.Text = "<"
 				local ObjInFrame = 0
-
 				for _, child: Frame in next, Frame:GetChildren() do
 					if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
 						TS:Create(child, TweenInfo.new(.5), { TextTransparency = 1, Size = UDim2.fromOffset(child.Size.X.Offset, 0) }):Play()
 						ObjInFrame += 1
 					end
 				end
-
 				pcall(function()
 					Frame:TweenSize(UDim2.fromOffset(Frame.Size.X.Offset, 0), nil, nil, .5)
-					parentFrame:TweenSize(parentFrame_Size, nil, nil, .5)
+					parentContainer:TweenSize(parentContainer_Size, nil, nil, .5)
 				end)
-				
 				task.wait(.5)
 				Frame.Visible = false
 			else
-				
 				local ObjInFrame = 0
 				Frame.Visible = true
-				
 				for _, child: Frame in next, Frame:GetChildren() do
 					if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
 						TS:Create(child, TweenInfo.new(.5), { TextTransparency = 0, Size = UDim2.fromOffset(child.Size.X.Offset, ExampleButton.Size.Y.Offset) }):Play()
 						ObjInFrame += 1
 					end
 				end
-				
 				Symbol.Text = ">"
 				Frame:TweenSize(UDim2.fromOffset(Frame.Size.X.Offset, addSize * ObjInFrame), nil, nil, .5)
-				parentFrame:TweenSize(UDim2.fromOffset(parentFrame_Size.X.Offset, parentFrame_Size.Y.Offset + (addSize * ObjInFrame)), nil, nil, .5)
+				parentContainer:TweenSize(UDim2.fromOffset(parentContainer_Size.X.Offset, parentContainer_Size.Y.Offset + (addSize * ObjInFrame)), nil, nil, .5)
 				task.wait(.5)
-				
 			end
-			
-			Cooldown = false
-			Toggled = not Toggled
+			Cooldown = false; Toggled = not Toggled
 		end))
 		
 		HandleEvent(Frame.ChildAdded:Connect(function(child)
 			if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
 				Frame.Size = UDim2.fromOffset(Frame.Size.X.Offset, Frame.Size.Y.Offset + addSize)
 				dropdownLib.Data[child.Name] = child
-
 				if Toggled then
-
-					local ObjInFrame = 0
-					Frame.Visible = true
-					
-					for _, child in next, Frame:GetChildren() do
-						if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
-							ObjInFrame += 1
-						end
-					end
-
-					pcall(function()
-						parentFrame:TweenSize(UDim2.fromOffset(parentFrame_Size.X.Offset, parentFrame_Size.Y.Offset + (addSize * ObjInFrame)), nil, nil, .5)
-					end)
-
+					local ObjInFrame = 0; Frame.Visible = true
+					for _, child in next, Frame:GetChildren() do if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then ObjInFrame += 1 end end
+					pcall(function() parentContainer:TweenSize(UDim2.fromOffset(parentContainer_Size.X.Offset, parentContainer_Size.Y.Offset + (addSize * ObjInFrame)), nil, nil, .5) end)
 				end
 			end
 		end))
@@ -1850,249 +1746,150 @@ do -- UI Functions
 			if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
 				Frame.Size = UDim2.fromOffset(Frame.Size.X.Offset, Frame.Size.Y.Offset - addSize)
 				dropdownLib.Data[child.Name] = nil
-
 				if Toggled then
-
-					local ObjInFrame = 0
-					Frame.Visible = true
-					
-					for _, child in next, Frame:GetChildren() do
-						if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
-							ObjInFrame += 1
-						end
-					end
-
-					pcall(function()
-						parentFrame:TweenSize(UDim2.fromOffset(parentFrame_Size.X.Offset, parentFrame_Size.Y.Offset + (addSize * ObjInFrame)), nil, nil, .5)
-					end)
-					
+					local ObjInFrame = 0; Frame.Visible = true
+					for _, child in next, Frame:GetChildren() do if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then ObjInFrame += 1 end end
+					pcall(function() parentContainer:TweenSize(UDim2.fromOffset(parentContainer_Size.X.Offset, parentContainer_Size.Y.Offset + (addSize * ObjInFrame)), nil, nil, .5) end)
 				end
 			end
 		end))
 		
-		Symbol.Text = "<"
-		Frame.Visible = false
-		Frame.Size = UDim2.fromOffset(Frame.Size.X.Offset, 0)
-
+		Symbol.Text = "<"; Frame.Visible = false; Frame.Size = UDim2.fromOffset(Frame.Size.X.Offset, 0)
 		local Selected = nil
 
 		function dropdownLib:Remove( value )
 			for i, child in next, Frame:GetChildren() do
 				if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
-					if not value then
-						child:Destroy()
-					else
-						if child.Name == value then
-							child:Destroy()
-						end
-					end
+					if not value then child:Destroy() else if child.Name == value then child:Destroy() end end
 				end
 			end
 			dropdownLib:Refresh()
 		end
 		
-		function dropdownLib:Delete(...)
-			return dropdownLib:Remove(...)
-		end
+		function dropdownLib:Delete(...) return dropdownLib:Remove(...) end
 
 		function dropdownLib:Add( value: string )
 			if type(value)=="string" then
-
 				local btn: TextButton = ExampleButton:Clone()
-				btn.Text = value
-				btn.Name = value
-				btn.Parent = Frame
-				
+				btn.Text = value; btn.Name = value; btn.Parent = Frame
 				HandleEvent(btn.MouseButton1Click, function()
-
 					btn.TextColor3 = Color3.fromRGB()
 					local oldSelName = Selected and Selected.Name or ""
-					
 					if oldSelName~="" then
 						local Stroke: UIStroke = Selected:FindFirstChildOfClass("UIStroke")
 						if Stroke then Stroke:Destroy() end
 						Selected.TextColor3 = Color3.fromRGB(17, 117, 167)
 					end
-
 					local UIStroke = Instance.new("UIStroke")
 					UIStroke["Color"] = Color3.fromRGB(255, 255, 255)
-					UIStroke["Thickness"] = 0.20000000298023224
+					UIStroke["Thickness"] = 0.2
 					UIStroke["Parent"] = btn
-
 					btn.TextColor3 = Color3.fromRGB(26, 177, 252)
 					Selected = btn
-
-					if not Data.KeepText then
-						pcall(function() Dropdown.Label.Text = value end) -- IDK, ITS 4 AM
-					end
-
+					if not Data.KeepText then pcall(function() Dropdown.Label.Text = value end) end
 					local passed, message = pcall(Data.Callback, value, oldSelName)
-					if not passed then
-						warn("[ Linui Library: Dropdown Bug ] "..Data.Name..": "..message)
-					end
+					if not passed then warn("[ Linui Library: Dropdown Bug ] "..Data.Name..": "..message) end
 				end)
-			else
-				return;
-			end
+			else return; end
 		end
 
 		function dropdownLib:Get( value: string ) 
 			for i, child in next, Frame:GetChildren() do
 				if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
-					if not value then
-						return nil;
-					else
-						if child.Name == value then
-							return child
-						end
-					end
+					if not value then return nil; else if child.Name == value then return child end end
 				end
 			end
 			return nil
 		end
 
-		function dropdownLib:All()
-			return dropdownLib.Data
-		end
+		function dropdownLib:All() return dropdownLib.Data end
 
 		function dropdownLib:Refresh(data: {})
-
 			task.spawn(function()
 				if type(data)=="table" then
 					dropdownLib:Remove()
-					for i,v in next, data do
-						dropdownLib:Add(v)
-					end
+					for i,v in next, data do dropdownLib:Add(v) end
 					return;
 				end
-				---------------
-				repeat task.wait() until not Cooldown
-				Cooldown = true
-	
-				if not Toggled then		
+				repeat task.wait() until not Cooldown; Cooldown = true
+				if not Toggled then
 					Symbol.Text = "<"
-
 					pcall(function()
 						Frame:TweenSize(UDim2.fromOffset(Frame.Size.X.Offset, 0), nil, nil, .5)
-						parentFrame:TweenSize(parentFrame_Size, nil, nil, .5)
+						parentContainer:TweenSize(parentContainer_Size, nil, nil, .5)
 					end)
-					
 					task.wait(.5)
 					Frame.Visible = false
 				else
-					
-					local ObjInFrame = 0
-					Frame.Visible = true
-					
-					for _, child in next, Frame:GetChildren() do
-						if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then
-							ObjInFrame += 1
-						end
-					end
-					
+					local ObjInFrame = 0; Frame.Visible = true
+					for _, child in next, Frame:GetChildren() do if (pcall(function() return child.Name, child.Position, child.Size, child.BackgroundColor3 end)) then ObjInFrame += 1 end end
 					Symbol.Text = ">"
 					pcall(function()
 						Frame:TweenSize(UDim2.fromOffset(Frame.Size.X.Offset, addSize * ObjInFrame), nil, nil, .5)
-						parentFrame:TweenSize(UDim2.fromOffset(parentFrame_Size.X.Offset, parentFrame_Size.Y.Offset + (addSize * ObjInFrame)), nil, nil, .5)
+						parentContainer:TweenSize(UDim2.fromOffset(parentContainer_Size.X.Offset, parentContainer_Size.Y.Offset + (addSize * ObjInFrame)), nil, nil, .5)
 					end)
 					task.wait(.5)
-					
 				end
 				Cooldown = false
 			end)
 		end
 
 		dropdownLib:Refresh(Data.Data)
-
-		if Frame:FindFirstChild("Button") then
-			Frame.Button:Destroy()
-		end
-
+		if Frame:FindFirstChild("Button") then Frame.Button:Destroy() end
 		return dropdownLib
 	end
 
 	function Library:Color( Data: { Text: string, Tab: Frame, Data: {} } ) 
-
 		Data = type(Data)=="table" and Data or {}
 		Data.Text = Data.Text or Data.Name or "Test Color"
 		Data.Data = type(Data.Data)=="table" and Data.Data or {}
-		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 		Data.Callback = Data.Callback or function() end
+        local parentFrame = getParentFrame(Data)
 
 		local ColorExample = Examples:FindFirstChild("ColorPicker")
 		if not ColorExample then return; end
 
 		ColorExample = ColorExample:Clone()
-		ColorExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
+		ColorExample.Parent = (parentFrame:FindFirstChildOfClass("ScrollingFrame") and parentFrame:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or parentFrame:FindFirstChildOfClass("ScrollingFrame")) or parentFrame
 		
 		local ViewColor = ColorExample:FindFirstChild("ViewColor")
 		ViewColor.Label.Text = Data.Text
 
 		local frame = ViewColor:FindFirstChild("Frame")
-		
 		local colourWheel: ImageButton = frame:WaitForChild("ColourWheel")
 		local wheelPicker: ImageLabel = colourWheel:WaitForChild("Picker")
-		
 		local darknessPicker = frame:WaitForChild("DarknessPicker")
 		local darknessSlider: ImageLabel = darknessPicker:WaitForChild("Slider")
-		
 		local colourDisplay = ViewColor:WaitForChild("ColorDisplay")
-		
 		local R, G, B = frame:FindFirstChild("R"), frame:FindFirstChild("G"), frame:FindFirstChild("B")
         
-        -- [[ MOBILE PATCH START: Color Picker Input ]]
 		local isDraggingWheel = false
         local isDraggingDarkness = false
-        -- [[ MOBILE PATCH END: Color Picker Input ]]
-        
-		local colorlib = {}
+        local colorlib = {}
 
 		local function updateMouse(inputPos)
 			local centreOfWheel = Vector2.new(colourWheel.AbsolutePosition.X + (colourWheel.AbsoluteSize.X/2), colourWheel.AbsolutePosition.Y + (colourWheel.AbsoluteSize.Y/2))
-			
             if isDraggingWheel then
     			local distanceFromWheel = (inputPos - centreOfWheel).Magnitude
 			    if distanceFromWheel <= colourWheel.AbsoluteSize.X/2 then
 				    wheelPicker:TweenPosition(UDim2.new(0, inputPos.X - colourWheel.AbsolutePosition.X, 0, inputPos.Y - colourWheel.AbsolutePosition.Y), nil, nil, .05)
 			    end
             end
-			
 			if isDraggingDarkness then
-				darknessSlider:TweenPosition(UDim2.new(darknessSlider.Position.X.Scale, 0, 0, 
-					math.clamp(
-						inputPos.Y - darknessPicker.AbsolutePosition.Y, 
-						0, 
-						darknessPicker.AbsoluteSize.Y)
-					)	, nil, nil, .05)
+				darknessSlider:TweenPosition(UDim2.new(darknessSlider.Position.X.Scale, 0, 0, math.clamp(inputPos.Y - darknessPicker.AbsolutePosition.Y, 0, darknessPicker.AbsoluteSize.Y)), nil, nil, .05)
 			end
-			
 			return centreOfWheel
 		end
 		
 		local function updateColour(centreOfWheel)
-			local colourPickerCentre = Vector2.new(
-				wheelPicker.AbsolutePosition.X + (wheelPicker.AbsoluteSize.X/2),
-				wheelPicker.AbsolutePosition.Y + (wheelPicker.AbsoluteSize.Y/2)
-			)
-			
+			local colourPickerCentre = Vector2.new(wheelPicker.AbsolutePosition.X + (wheelPicker.AbsoluteSize.X/2), wheelPicker.AbsolutePosition.Y + (wheelPicker.AbsoluteSize.Y/2))
 			local h = (math.pi - math.atan2(colourPickerCentre.Y - centreOfWheel.Y, colourPickerCentre.X - centreOfWheel.X)) / (math.pi * 2)
 			local s = (centreOfWheel - colourPickerCentre).Magnitude / (colourWheel.AbsoluteSize.X/2)
 			local v = math.abs((darknessSlider.AbsolutePosition.Y - darknessPicker.AbsolutePosition.Y) / darknessPicker.AbsoluteSize.Y - 1)
 			local hsv = Color3.fromHSV(math.clamp(h, 0, 1), math.clamp(s, 0, 1), math.clamp(v, 0, 1))
-			
-			TS:Create(colourDisplay, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { 
-				BackgroundColor3 = hsv
-			}):Play()
-			
-			darknessPicker.UIGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromHSV(h, s, 1)), -- Use full brightness for the gradient
-				ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
-			}
-			
-			TS:Create(darknessSlider, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { 
-				ImageColor3 = hsv
-			}):Play()
-			
+			TS:Create(colourDisplay, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { BackgroundColor3 = hsv }):Play()
+			darknessPicker.UIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromHSV(h, s, 1)), ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))}
+			TS:Create(darknessSlider, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { ImageColor3 = hsv }):Play()
 			colorlib:Set(hsv)
 		end	
 		
@@ -2101,225 +1898,143 @@ do -- UI Functions
 		local _originalSize = ColorExample.Size
 
 		HandleEvent(ViewColor.MouseButton1Click:Connect(function()
-			if ShowCooldown then return; end
-			ShowCooldown = true
-
+			if ShowCooldown then return; end; ShowCooldown = true
 			if not frame.Visible then
-				frame.Size = UDim2.fromOffset(frame.Size.X.Offset, 0)
-				ColorExample.Size = frame.Size
-				frame.Visible = true
+				frame.Size = UDim2.fromOffset(frame.Size.X.Offset, 0); ColorExample.Size = frame.Size; frame.Visible = true
 				ColorExample:TweenSize(UDim2.new(0, 181, 0, 180), nil, nil, .5)
 				frame:TweenSize(UDim2.new(0, 181, 0, 144), nil, nil, .5)
 				task.wait(.6)
 			else
-				frame.Size = UDim2.new(0, 181, 0, 144)
-				ColorExample.Size = UDim2.new(0, 181, 0, 160)
-				frame.Visible = true
+				frame.Size = UDim2.new(0, 181, 0, 144); ColorExample.Size = UDim2.new(0, 181, 0, 160); frame.Visible = true
 				ColorExample:TweenSize(_originalSize, nil, nil, .5)
 				frame:TweenSize(UDim2.fromOffset(frame.Size.X.Offset, 0), nil, nil, .5)
-				task.wait(.6)
-				frame.Visible = false
+				task.wait(.6); frame.Visible = false
 			end
-
 			ShowCooldown = false
 		end))
         
-        -- [[ MOBILE PATCH START: Color Picker Input Logic ]]
-        HandleEvent(colourWheel.InputBegan, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                isDraggingWheel = true
-                updateColour(updateMouse(input.Position))
-            end
-        end)
-        
-        HandleEvent(darknessPicker.InputBegan, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                isDraggingDarkness = true
-                updateColour(updateMouse(input.Position))
-            end
-        end)
-        
-        HandleEvent(UIS.InputChanged, function(input)
-            if not (isDraggingWheel or isDraggingDarkness) then return end
-            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                updateColour(updateMouse(input.Position))
-            end
-        end)
-        
-        HandleEvent(UIS.InputEnded, function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                isDraggingWheel = false
-                isDraggingDarkness = false
-            end
-        end)
-        -- [[ MOBILE PATCH END: Color Picker Input Logic ]]
+        HandleEvent(colourWheel.InputBegan, function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isDraggingWheel = true; updateColour(updateMouse(input.Position)) end end)
+        HandleEvent(darknessPicker.InputBegan, function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isDraggingDarkness = true; updateColour(updateMouse(input.Position)) end end)
+        HandleEvent(UIS.InputChanged, function(input) if not (isDraggingWheel or isDraggingDarkness) then return end; if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then updateColour(updateMouse(input.Position)) end end)
+        HandleEvent(UIS.InputEnded, function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isDraggingWheel = false; isDraggingDarkness = false end end)
 
-		----------------------------------------
 		function colorlib:Set( color: Color3, nocall: boolean )
 			if typeof(color)=="Color3" then
-
-				TS:Create(colourDisplay, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { 
-					BackgroundColor3 = color
-				}):Play()
-
-				local _R, _G, _B = color.R * 255, color.G * 255, color.B * 255 -- I love complicating my code [ Im joking I did this for fun ]
+				TS:Create(colourDisplay, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { BackgroundColor3 = color }):Play()
+				local _R, _G, _B = color.R * 255, color.G * 255, color.B * 255
 				_R, _G, _B = tostring(math.floor(_R + 0.5)), tostring(math.floor(_G + 0.5)), tostring(math.floor(_B + 0.5))
-	
 				if typeof(R)=="Instance" and R.ClassName:match("Text") then R.Text = _R end
 				if typeof(G)=="Instance" and G.ClassName:match("Text") then G.Text = _G end
 				if typeof(B)=="Instance" and B.ClassName:match("Text") then B.Text = _B end
-
 				if not nocall then
 					local called, message = pcall(Data.Callback, color)
-					if not called then
-						warn("[ Linui Library: ColorPicker Bug ] "..Data.Name..": "..message)
-					end
+					if not called then warn("[ Linui Library: ColorPicker Bug ] "..Data.Name..": "..message) end
 				end
 			end
 		end
-
-		function colorlib:Text( value: string )
-			if type(value)=="string" then
-				ViewColor.Label.Text = value
-			end
-		end
-
-		function colorlib:Get()
-			repeat task.wait(.06) until not (isDraggingWheel or isDraggingDarkness) -- If they're picking a color, wait for them to be finished
-			return colourDisplay.BackgroundColor3
-		end
-
-		if Data.Color then
-			colorlib:Set(Data.Color, Data.nocall)
-		end
-
+		function colorlib:Text( value: string ) if type(value)=="string" then ViewColor.Label.Text = value end end
+		function colorlib:Get() repeat task.wait(.06) until not (isDraggingWheel or isDraggingDarkness); return colourDisplay.BackgroundColor3 end
+		if Data.Color then colorlib:Set(Data.Color, Data.nocall) end
 		frame.Visible = Data.Hide
 		return colorlib
 	end
 
 	function Library:Section(name) 
-		
 		name = type(name)=="string" and name or "ExmapleSection"
 		local sectionLib = {}
 		local HideCooldown = false
-		
 		local Section = Instance.new("Frame")
 		local UICorner = Instance.new("UICorner")
 		local _Frame = Instance.new("ScrollingFrame")
-	
 		local Label = Instance.new("TextButton")
 		local Line = Instance.new("Frame")
-		
 		local UIListLayout = Instance.new("UIListLayout")
 		local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
-	
-		--Properties:
-	
-		Section.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-		Section.BackgroundTransparency = 0.400
-		Section.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		Section.BorderSizePixel = 0
-		Section.Position = UDim2.new(-4.31409859e-08, 0, -1.0403466532693528e-08, 0)
-		Section.Size = UDim2.new(1.00000012, 0, 0.259604543, 0)
-	
-		UICorner.CornerRadius = UDim.new(0, 0)
-		UICorner.Parent = Section
-	
-		_Frame.Name = "_Frame"
-		_Frame.Parent = Section
-		_Frame.Active = true
-		_Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		_Frame.BackgroundTransparency = 1.000
-		_Frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		_Frame.BorderSizePixel = 0
-		_Frame.Position = UDim2.new(0.0197910536, 0, 0.0965689346, 0)
-		_Frame.Size = UDim2.new(0.961277604, 0, 0.884780228, 0)
-		_Frame.ScrollBarThickness = 1
-	
-		Label.Name = "Label"
-		Label.Parent = Section
-		Label.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		Label.BackgroundTransparency = 1.000
-		Label.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		Label.BorderSizePixel = 0
-		Label.Position = UDim2.new(0.0565457866, 0, 0.0130498558, 0)
-		Label.Size = UDim2.new(0.882113576, 0, 0.0574193671, 0)
-		Label.Text = name
-		Label.TextColor3 = Color3.fromRGB(255, 255, 255)
-		Label.TextScaled = true
-		Label.TextSize = 15.000
-		Label.TextWrapped = true
-	
-		UITextSizeConstraint.Parent = Label
-		UITextSizeConstraint.MaxTextSize = 14
-		
-		UIListLayout.Padding = UDim.new(0, 1)
-		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		UIListLayout.Parent = _Frame
-		
-		Line.Name = "Line"
-		Line.Parent = Section
-		Line.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		Line.BorderColor3 = Color3.fromRGB(255, 255, 255)
-		Line.Position = UDim2.new(0.353349507, 0, 0.0730726197, 0)
-		Line.Size = UDim2.new(0.292164683, 0, 0.00135501358, 0)
-		
-		local LeftSide = Frame:FindFirstChild("Left") or Frame:FindFirstChild("Right")
-		LeftSide = LeftSide and LeftSide:FindFirstChildOfClass("ScrollingFrame") or LeftSide
+		Section.BackgroundColor3 = Color3.fromRGB(10, 10, 10); Section.BackgroundTransparency = 0.4; Section.BorderColor3 = Color3.fromRGB(0, 0, 0); Section.BorderSizePixel = 0; Section.Position = UDim2.new(0, 0, 0, 0); Section.Size = UDim2.new(1, 0, 0.26, 0)
+		UICorner.CornerRadius = UDim.new(0, 0); UICorner.Parent = Section
+		_Frame.Name = "_Frame"; _Frame.Parent = Section; _Frame.Active = true; _Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0); _Frame.BackgroundTransparency = 1; _Frame.BorderColor3 = Color3.fromRGB(0, 0, 0); _Frame.BorderSizePixel = 0; _Frame.Position = UDim2.new(0.02, 0, 0.097, 0); _Frame.Size = UDim2.new(0.961, 0, 0.885, 0); _Frame.ScrollBarThickness = 1
+		Label.Name = "Label"; Label.Parent = Section; Label.BackgroundColor3 = Color3.fromRGB(255, 255, 255); Label.BackgroundTransparency = 1; Label.BorderColor3 = Color3.fromRGB(0, 0, 0); Label.BorderSizePixel = 0; Label.Position = UDim2.new(0.057, 0, 0.013, 0); Label.Size = UDim2.new(0.882, 0, 0.057, 0); Label.Text = name; Label.TextColor3 = Color3.fromRGB(255, 255, 255); Label.TextScaled = true; Label.TextSize = 15; Label.TextWrapped = true
+		UITextSizeConstraint.Parent = Label; UITextSizeConstraint.MaxTextSize = 14
+		UIListLayout.Padding = UDim.new(0, 1); UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder; UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center; UIListLayout.Parent = _Frame
+		Line.Name = "Line"; Line.Parent = Section; Line.BackgroundColor3 = Color3.fromRGB(0, 0, 0); Line.BorderColor3 = Color3.fromRGB(255, 255, 255); Line.Position = UDim2.new(0.353, 0, 0.073, 0); Line.Size = UDim2.new(0.292, 0, 0.001, 0)
+		local LeftSide = Frame:FindFirstChild("Left") or Frame:FindFirstChild("Right"); LeftSide = LeftSide and LeftSide:FindFirstChildOfClass("ScrollingFrame") or LeftSide
 		if not LeftSide then Section:Destroy(); return "Frame Componets not found!" end
-		
-		Section.Name = name
-		Section.Parent = LeftSide
-		handleChildSize(_Frame, _Frame)
-
-		function sectionLib:Slider(Data)
-			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
-			return Library:Slider(Data)
-		end
-		
-		function sectionLib:Label(Data)
-			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
-			return Library:Label(Data)
-		end
-		
-		function sectionLib:Button(Data)
-			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
-			return Library:Button(Data)
-		end
-		function sectionLib:Toggle(Data)
-			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
-			return Library:Toggle(Data)
-		end
-		function sectionLib:Keybind(Data)
-			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
-			return Library:Keybind(Data)
-		end
-		function sectionLib:Dropdown(Data)
-			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
-			return Library:Dropdown(Data)
-		end
-		function sectionLib:Color(Data)
-			Data = type(Data)=="table" and Data or {}
-			Data.Tab = name
-			return Library:Color(Data)
-		end
-		function sectionLib:Hide()
-			Section.Parent = nil
-		end
-		
-		function sectionLib:Show()
-			Section.Parent = LeftSide
-		end
-
+		Section.Name = name; Section.Parent = LeftSide; handleChildSize(_Frame, _Frame)
+		function sectionLib:Slider(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = Section; return Library:Slider(Data) end
+		function sectionLib:Label(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = Section; return Library:Label(Data) end
+		function sectionLib:Button(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = Section; return Library:Button(Data) end
+		function sectionLib:Toggle(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = Section; return Library:Toggle(Data) end
+		function sectionLib:Keybind(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = Section; return Library:Keybind(Data) end
+		function sectionLib:Dropdown(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = Section; return Library:Dropdown(Data) end
+		function sectionLib:Color(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = Section; return Library:Color(Data) end
+		function sectionLib:Hide() Section.Parent = nil end
+		function sectionLib:Show() Section.Parent = LeftSide end
 		return sectionLib
 	end
+
+    -- NEW: Tab Function
+    function Library:Tab(name)
+        name = type(name) == "string" and name or "ExampleTab"
+        local tabLib = {}
+
+        -- Create the tab button on the left panel
+        local tabButton = Library:Button({
+            Text = name,
+            Tab = "Left"
+        })
+        
+        -- Create the content frame for this tab
+        local contentFrame = Instance.new("ScrollingFrame")
+        contentFrame.Name = name .. "_Content"
+        contentFrame.Size = UDim2.new(1, 0, 1, 0)
+        contentFrame.BackgroundTransparency = 1
+        contentFrame.BorderSizePixel = 0
+        contentFrame.ScrollBarThickness = 6
+        contentFrame.Visible = false -- Hide by default
+        contentFrame.Parent = UI.Frame.Main.TabContentContainer
+
+        local listLayout = Instance.new("UIListLayout")
+        listLayout.Padding = UDim.new(0, 5)
+        listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        listLayout.Parent = contentFrame
+
+        handleChildSize(contentFrame, contentFrame)
+
+        local tabData = {button = tabButton, content = contentFrame}
+        table.insert(Tabs, tabData)
+
+        -- Handle tab switching
+        tabButton:Change(function()
+            for _, otherTabData in ipairs(Tabs) do
+                -- Deactivate all other tabs
+                otherTabData.content.Visible = false
+                otherTabData.button.Object.Parent.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+            end
+            -- Activate the clicked tab
+            contentFrame.Visible = true
+            tabButton.Object.Parent.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Active color
+        end)
+        
+        -- Make the first tab created active by default
+        if #Tabs == 1 then
+            contentFrame.Visible = true
+            tabButton.Object.Parent.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        else
+            tabButton.Object.Parent.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+        end
+
+        -- Populate the returned library with functions
+        function tabLib:Slider(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = contentFrame; return Library:Slider(Data) end
+		function tabLib:Label(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = contentFrame; return Library:Label(Data) end
+		function tabLib:Button(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = contentFrame; return Library:Button(Data) end
+		function tabLib:Toggle(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = contentFrame; return Library:Toggle(Data) end
+		function tabLib:Keybind(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = contentFrame; return Library:Keybind(Data) end
+		function tabLib:Dropdown(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = contentFrame; return Library:Dropdown(Data) end
+		function tabLib:Color(Data) Data = type(Data)=="table" and Data or {}; Data.Tab = contentFrame; return Library:Color(Data) end
+
+        return tabLib
+    end
 
 	Loop(function()
 		local exist = pcall(function() return Part.Name, Part.Parent~=nil and Part or error(), Part.Size end)
@@ -2418,8 +2133,6 @@ end
 -------------------------------------- UI: Breathing, Config
 local AllFrames = Frame:GetChildren()
 
--- [[ MODIFIED: Visibility Logic ]]
--- DELETED: Fullscreen logic removed
 local isResizing = false
 local initialMousePos, initialSize
 local minSize = Vector3.new(15, 8, 2)
@@ -2507,13 +2220,10 @@ function Library:Config()
 	--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	Library:Slider({
 		Text = "Z", -- Text of Slider
-	
-		Min = 1,
+		Min = 9, -- MODIFIED: Minimum Z distance set to 9
 		Value = Storage.Data["LinenLib_Z"] or math.abs(LookView.Z),
 		Max = 40,
-	
 		WaitForMouse = true,
-	
 		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_Z"]  = value
 			LookView = Vector3.new(LookView.X, LookView.Y, -value)
@@ -2522,13 +2232,10 @@ function Library:Config()
 	
 	Library:Slider({
 		Text = "Y",
-	
 		Min = 0,
 		Value = Storage.Data["LinenLib_Y"] or 0,
 		Max = 5,
-	
 		WaitForMouse = true,
-	
 		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_Y"] = value
 			if value~=prevalue then
@@ -2538,52 +2245,41 @@ function Library:Config()
 	}):Set(Storage.Data["LinenLib_Y"])
 	
 	Library:Slider({
-	
 		Text = "R", -- Text of Slider
 		Step = 1,
-	
 		Min = ( 0.01 * 100 ),
 		Value = Storage.Data["LinenLib_R"] or SCALE * 100,
 		Max = 21,
-	
 		WaitForMouse = true,
-	
 		Callback = function(value)
 			Storage.Data["LinenLib_R"] = value
 			SCALE = value/100
 		end,
-	
 	})
 	
 	Library:Slider({
-	
 		Text = "G",
 		Step = 1,
-	
 		Min = 1,
 		Value = Storage.Data["LinenLib_G"] or 6,
 		Max = 20,
-	
 		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_G"] = value
 			for i,v in next, AllFrames do
 				if v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton") or v:IsA("ScrollingFrame") then
 					local Layout;
-	
 					for a, b in next, v:GetDescendants() do
 						if b:IsA("UIListLayout") then
 							Layout = b
 							break;
 						end
 					end
-	
 					if Layout then
 						Layout.Padding = UDim.new(0, value)
 					end
 				end
 			end
 		end,
-	
 	})
 	return Library
 end
@@ -2591,7 +2287,6 @@ end
 Library.Frame = Frame
 Library.Storage = Storage
 Library:Config() -- Loads settings
-
 
 -- [[ FINAL MODIFICATIONS START ]]
 
@@ -2605,7 +2300,7 @@ OpenButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenButton.Font = Enum.Font.GothamSemibold
 OpenButton.TextSize = 16
-OpenButton.Visible = false -- Initially hidden
+OpenButton.Visible = false
 OpenButton.Draggable = true
 OpenButton.Active = true
 
@@ -2615,7 +2310,7 @@ local obStroke = Instance.new("UIStroke", OpenButton)
 obStroke.Color = Color3.fromRGB(80, 80, 80)
 
 HandleEvent(OpenButton.MouseButton1Click, function()
-    Frame.Visible = true
+    UI.Enabled = true
     OpenButton.Visible = false
 end)
 
@@ -2631,7 +2326,9 @@ TopCenterButton.TextColor3 = Color3.fromRGB(220, 220, 220)
 TopCenterButton.TextSize = 14
 TopCenterButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 TopCenterButton.BackgroundTransparency = 0.3
-TopCenterButton.Visible = false -- Initially hidden
+TopCenterButton.Visible = false
+TopCenterButton.Draggable = true -- NEW: Make it draggable
+TopCenterButton.Active = true
 
 local tcbCorner = Instance.new("UICorner", TopCenterButton)
 tcbCorner.CornerRadius = UDim.new(0, 6)
@@ -2639,28 +2336,70 @@ local tcbStroke = Instance.new("UIStroke", TopCenterButton)
 tcbStroke.Color = Color3.fromRGB(100, 100, 100)
 tcbStroke.Transparency = 0.5
 
--- Event for Yellow Button
+-- NEW: Animation Function
+local function SetUIVisibility(visible)
+    local targetTransparency = visible and 0 or 1
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    if visible then
+        UI.Enabled = true
+        Part.Transparency = 0
+    end
+
+    for _, descendant in ipairs(Frame:GetDescendants()) do
+        if descendant:IsA("GuiObject") then
+            local properties = {}
+            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                properties.TextTransparency = targetTransparency
+            end
+            if descendant:IsA("ImageLabel") or descendant:IsA("ImageButton") then
+                properties.ImageTransparency = targetTransparency
+            end
+            if descendant:IsA("Frame") or descendant:IsA("ScrollingFrame") then
+                properties.BackgroundTransparency = targetTransparency
+            end
+            if descendant:IsA("UIStroke") then
+                properties.Transparency = targetTransparency
+            end
+
+            if next(properties) then
+                TS:Create(descendant, tweenInfo, properties):Play()
+            end
+        end
+    end
+    
+    if not visible then
+        task.wait(tweenInfo.Time)
+        UI.Enabled = false
+        Part.Transparency = 1
+    end
+end
+
+-- Event for Yellow Button (with animation)
 HandleEvent(UI.Frame.Right.MINIMIZE.MouseButton1Click, function()
-    Frame.Visible = false
+    SetUIVisibility(false)
     TopCenterButton.Visible = true
 end)
 
--- Event for Top-Center Button
+-- Event for Top-Center Button (with animation)
 HandleEvent(TopCenterButton.MouseButton1Click, function()
-    Frame.Visible = true
+    SetUIVisibility(true)
     TopCenterButton.Visible = false
 end)
-
 
 -- [[ 3. Global Toggle Logic (RightShift) ]]
 HandleEvent(UIS.InputBegan, function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Config.ToggleKey then
-        -- This toggle affects the main 3D panel and the draggable side button
-        Frame.Visible = not Frame.Visible
-        OpenButton.Visible = not Frame.Visible
-        -- It should NOT affect the top-center button's visibility
-        if TopCenterButton.Visible then
+        local isCurrentlyVisible = UI.Enabled
+        SetUIVisibility(not isCurrentlyVisible)
+        
+        -- Also handle the visibility of the draggable/top buttons
+        if isCurrentlyVisible then -- if it WAS visible, we are now hiding it
+            OpenButton.Visible = true
+            TopCenterButton.Visible = false
+        else -- if it WAS hidden, we are now showing it
+            OpenButton.Visible = false
             TopCenterButton.Visible = false
         end
     end
