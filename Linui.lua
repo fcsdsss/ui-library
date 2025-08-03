@@ -15,7 +15,7 @@
 ]]
 
 -- 2000+ Lines, crazy isn't it?
--- Version: 1.3 (Feature Update)
+-- Version: 1.5 (Interaction & UX Refinement)
 STRING = "Fixes:"
 --[[
 	* Fixed UI click-related bugs
@@ -23,16 +23,20 @@ STRING = "Fixes:"
 	* Fixed Toggles inverting wrong callback
 	* Made more hard to detect
 	* Fixed Colorpicker overriding screen
-    * Fixed top-right buttons not hiding
+    * Fixed top-right buttons not hiding with main panel
     * Fixed Color Picker on mobile
+    * Fixed screen blur issue in certain games by deferring parent assignment
 ]]
 
 STRING = "Updates:"
 --[[
 	* Added Colorpicker
     * Patched for mobile experience (Slider, UI hiding, and smooth tilting)
-    * Added Fullscreen button
-    * Added UI Resizer Handle
+    * Added independent Fullscreen button with a clearer icon
+    * Re-purposed Minimize (yellow) button to toggle transparency (fade in/out)
+    * Replaced old minimize logic with a WindUI-style draggable toggle bound to the global ToggleKey
+    * Replaced resizer handle with a corner triangle
+    * Increased size of top-right buttons for better mobile usability
 ]]
 
 local __original_require = require
@@ -173,7 +177,6 @@ if type(ProtectInstance)=="function" then -- If ur exploit doesn't support and y
 end
 
 Part.Parent = workspace
-	-- print(Part.Parent) -- nil [ The part is hooked to return nil ] [ ONLY IF UR EXPLOIT SUPPORTS ProtectInstance ]
 
 local Objects = Instance.new("Folder")
 local Examples = Instance.new("Folder")
@@ -187,8 +190,8 @@ Examples.Parent = Part
 Cache.add(Objects)
 Cache.add(Part)
 
-local UI, Frame = nil, nil;
-local Config = { ["Keys"] = {}, ["Cooldowns"] = {}, ["UI"] = {}, Breathing = true }
+local UI, Frame, OpenButton = nil, nil, nil;
+local Config = { ["Keys"] = {}, ["Cooldowns"] = {}, ["UI"] = {}, Breathing = true, ToggleKey = Enum.KeyCode.RightShift }
 local Library = { }
 
 local function HandleEvent(BindableEvent, callback)
@@ -243,7 +246,13 @@ do -- Main UI
 	UI["Name"] = "UI"
 	UI["ZIndexBehavior"] = Enum.ZIndexBehavior.Sibling
 	UI["AlwaysOnTop"] = true
-	UI["Parent"] = Part
+    
+    -- [[ FIX: Screen Blur ]]
+    -- Defer parenting to avoid affecting game's core UI on startup
+    task.spawn(function()
+        pcall(function() UI.Parent = Part end)
+    end)
+    -- [[ END FIX ]]
 
     Frame = Instance.new("ImageButton")
 	Frame["BorderSizePixel"] = 0
@@ -412,36 +421,16 @@ do -- Main UI
 	UIAspectRatioConstraint_4["AspectRatio"] = 0.48230084776878357
 	UIAspectRatioConstraint_4["Parent"] = Frame_2
 	
-    -- [[ FEATURE START: Fullscreen Button ]]
-	local FULLSCREEN = Instance.new("TextButton")
-	FULLSCREEN["TextWrapped"] = true
-	FULLSCREEN["BorderSizePixel"] = 0
-	FULLSCREEN["Name"] = "FULLSCREEN"
-	FULLSCREEN["TextSize"] = 14
-	FULLSCREEN["TextScaled"] = true
-	FULLSCREEN["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	FULLSCREEN["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	FULLSCREEN["Size"] = UDim2.new(0.04810125753283501, 0, 0.024390242993831635, 0)
-	FULLSCREEN["Position"] = UDim2.new(0.7645569443702698, 0, 0.008130080997943878, 0) -- Positioned next to MINIMIZE
-	FULLSCREEN["TextColor3"] = Color3.fromRGB(0, 0, 0)
-	FULLSCREEN["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	FULLSCREEN["Text"] = ""
-	FULLSCREEN["Font"] = Enum.Font.SourceSans
-	FULLSCREEN["Parent"] = Right
+    -- [[ FEATURE: Fullscreen Button ]]
+    local FULLSCREEN = Instance.new("ImageButton")
+    FULLSCREEN.Name = "FULLSCREEN"
+    FULLSCREEN.BackgroundTransparency = 1
+    FULLSCREEN.Size = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
+    FULLSCREEN.Position = UDim2.new(0.76, 0, 0.008, 0)
+    FULLSCREEN.Image = "http://www.roblox.com/asset/?id=284412499" -- Expand icon
+    FULLSCREEN.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    FULLSCREEN.Parent = Right
 	
-	local UITextSizeConstraint_fs = Instance.new("UITextSizeConstraint")
-	UITextSizeConstraint_fs["MaxTextSize"] = 14
-	UITextSizeConstraint_fs["Parent"] = FULLSCREEN
-	
-	local UICorner_fs = Instance.new("UICorner")
-	UICorner_fs["CornerRadius"] = UDim.new(1, 0)
-	UICorner_fs["Parent"] = FULLSCREEN
-	
-	local UIGradient_fs = Instance.new("UIGradient")
-	UIGradient_fs["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(8, 145, 41)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(2, 171, 38)) })
-	UIGradient_fs["Parent"] = FULLSCREEN
-    -- [[ FEATURE END: Fullscreen Button ]]
-    
 	local MINIMIZE = Instance.new("TextButton")
 	MINIMIZE["TextWrapped"] = true
 	MINIMIZE["BorderSizePixel"] = 0
@@ -450,8 +439,8 @@ do -- Main UI
 	MINIMIZE["TextScaled"] = true
 	MINIMIZE["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
 	MINIMIZE["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	MINIMIZE["Size"] = UDim2.new(0.04810125753283501, 0, 0.024390242993831635, 0)
-	MINIMIZE["Position"] = UDim2.new(0.8405062556266785, 0, 0.008130080997943878, 0)
+	MINIMIZE["Size"] = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
+	MINIMIZE["Position"] = UDim2.new(0.84, 0, 0.008, 0)
 	MINIMIZE["TextColor3"] = Color3.fromRGB(0, 0, 0)
 	MINIMIZE["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	MINIMIZE["Text"] = ""
@@ -478,8 +467,8 @@ do -- Main UI
 	EXIT["TextScaled"] = true
 	EXIT["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
 	EXIT["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	EXIT["Size"] = UDim2.new(0.04810125753283501, 0, 0.024390242993831635, 0)
-	EXIT["Position"] = UDim2.new(0.9164556264877319, 0, 0.008130080997943878, 0)
+	EXIT["Size"] = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
+	EXIT["Position"] = UDim2.new(0.92, 0, 0.008, 0)
 	EXIT["TextColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["Text"] = ""
@@ -506,21 +495,18 @@ do -- Main UI
 	UIAspectRatioConstraint_5["AspectRatio"] = 0.4793006479740143
 	UIAspectRatioConstraint_5["Parent"] = Right
 	
-    -- [[ FEATURE START: Resizer Handle ]]
+    -- [[ FEATURE: Resizer Handle (Triangle) ]]
     local ResizeHandle = Instance.new("ImageLabel")
     ResizeHandle.Name = "ResizeHandle"
-    ResizeHandle.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
-    ResizeHandle.BackgroundTransparency = 0.5
-    ResizeHandle.BorderSizePixel = 0
+    ResizeHandle.Image = "rbxassetid://5406592965" -- Triangle image
+    ResizeHandle.ImageColor3 = Color3.fromRGB(100, 100, 100)
+    ResizeHandle.BackgroundTransparency = 1
+    ResizeHandle.Rotation = 45
     ResizeHandle.AnchorPoint = Vector2.new(1, 1)
-    ResizeHandle.Position = UDim2.new(1, 0, 1, 0)
-    ResizeHandle.Size = UDim2.new(0, 15, 0, 15)
+    ResizeHandle.Position = UDim2.new(1, 5, 1, 5) -- Small offset from corner
+    ResizeHandle.Size = UDim2.new(0, 20, 0, 20)
     ResizeHandle.ZIndex = 10
     ResizeHandle.Parent = Frame
-    
-    local UICorner_rh = Instance.new("UICorner")
-    UICorner_rh.Parent = ResizeHandle
-    -- [[ FEATURE END: Resizer Handle ]]
     
 	local UIAspectRatioConstraint_6 = Instance.new("UIAspectRatioConstraint")
 	UIAspectRatioConstraint_6["AspectRatio"] = 1.9428621530532837
@@ -2356,7 +2342,6 @@ end
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 local SCALE = 0.01
 local LookView = Vector3.new(0, .1, -11)
-local UIS = game:GetService("UserInputService")
 
 local StoredTransparency = {}
 local PartIncreased = false
@@ -2374,17 +2359,12 @@ Cache.add(game:GetService("RunService").RenderStepped:Connect(function(deltaTime
 	local targetTiltY = (mouse.Y - mouse.ViewSizeY/2) * SCALE
 	
 	-- 2. 使用线性插值 (Lerp) 平滑地更新当前倾斜角度
-	--    每一帧，当前角度都会向目标角度靠近 smoothingFactor 的距离
 	currentTiltX = currentTiltX + (targetTiltX - currentTiltX) * smoothingFactor
 	currentTiltY = currentTiltY + (targetTiltY - currentTiltY) * smoothingFactor
 	
 	-- 3. 使用平滑后的角度来更新UI的CFrame
-	--    注意：我们不再需要每帧都创建一个新的Tween，直接设置CFrame即可
 	Part.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(LookView.X, LookView.Y, LookView.Z) * CFrame.Angles(0, math.rad(currentTiltX), 0) * CFrame.Angles(math.rad(currentTiltY) , 0 , 0)
 	
-	local scalingFactor = (workspace.CurrentCamera.CFrame.Position - Part.CFrame.Position).Magnitude - LookView.Z	
-	--Part.Size = Part.Size / Vector3.new(scalingFactor, 0, scalingFactor)
-
 end))
 -- [[ MOBILE PATCH END: SMOOTH UI TILT ]]
 
@@ -2450,66 +2430,12 @@ end
 -------------------------------------- UI: Breathing, Config
 local AllFrames = Frame:GetChildren()
 
--- [[ MOBILE PATCH START: UI HIDING ]]
-Cache.add(UIS.InputBegan:Connect(function(input, gameProcessedEvent)
-	-- 如果输入事件已被任何UI元素处理（例如点击按钮），则直接返回，不执行隐藏逻辑
-	if gameProcessedEvent then return; end
-
-	-- 只对触摸点击或鼠标左键点击做出反应
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		
-		if Config["FrameCooldown"] then return; end
-		Config["FrameCooldown"] = true
-		
-		local Time = .5
-		AllFrames = Frame:GetChildren()
-					
-		for i,v in next, Frame:GetChildren() do
-			if v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton") or v:IsA("ScrollingFrame") then
-
-				if StoredTransparency[v] then
-					TS:Create(v, TweenInfo.new(Time), { BackgroundTransparency = StoredTransparency[v], ImageTransparency = StoredTransparency[v] }):Play()
-					StoredTransparency[v] = nil
-				else
-					StoredTransparency[v] = v.BackgroundTransparency -- Store only one, assuming they are the same
-					TS:Create(v, TweenInfo.new(Time), { BackgroundTransparency = v.BackgroundTransparency + .2, ImageTransparency = v.ImageTransparency + .2 }):Play()
-				end
-
-				for _, v_descendant in next, v:GetDescendants() do
-					if v_descendant:IsA("GuiObject") and (v_descendant:IsA("Frame") or v_descendant:IsA("ImageLabel") or v_descendant:IsA("TextLabel") or v_descendant:IsA("ImageButton") or v_descendant:IsA("TextButton") or v_descendant:IsA("ScrollingFrame")) then
-						if StoredTransparency[v_descendant] then
-                            -- Restore transparency for all relevant properties
-							local props = {}
-							if v_descendant:IsA("TextLabel") or v_descendant:IsA("TextButton") then props.TextTransparency = StoredTransparency[v_descendant] end
-                            if v_descendant:IsA("ImageLabel") or v_descendant:IsA("ImageButton") then props.ImageTransparency = StoredTransparency[v_descendant] end
-                            props.BackgroundTransparency = StoredTransparency[v_descendant]
-							TS:Create(v_descendant, TweenInfo.new(Time), props):Play()
-							StoredTransparency[v_descendant] = nil
-						else
-                            -- Store transparency and then tween it
-							StoredTransparency[v_descendant] = v_descendant.BackgroundTransparency
-							local props = {}
-							if v_descendant:IsA("TextLabel") or v_descendant:IsA("TextButton") then props.TextTransparency = v_descendant.TextTransparency + .2 end
-                            if v_descendant:IsA("ImageLabel") or v_descendant:IsA("ImageButton") then props.ImageTransparency = v_descendant.ImageTransparency + .2 end
-							props.BackgroundTransparency = v_descendant.BackgroundTransparency + .2
-							TS:Create(v_descendant, TweenInfo.new(Time), props):Play()
-						end
-					end
-				end
-
-			end
-		end
-		
-		task.wait( Time + .1 )
-		Config["FrameCooldown"] = false
-			
-	end
-end))
--- [[ MOBILE PATCH END: UI HIDING ]]
-
--- [[ FEATURE START: Fullscreen and Resizer Logic ]]
+-- [[ FEATURE: Fullscreen, Resizer, and Visibility Logic ]]
 local isFullScreen = false
 local originalState = {}
+local fullscreenIcon = "http://www.roblox.com/asset/?id=284412499" -- Expand
+local normalIcon = "http://www.roblox.com/asset/?id=284412574" -- Shrink
+
 HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
     isFullScreen = not isFullScreen
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -2527,11 +2453,13 @@ HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
         TS:Create(Part, tweenInfo, fullscreenProperties):Play()
         LookView = Vector3.new(0, 0, -1.8) -- Move closer to camera
         SCALE = 0 -- Disable tilt
+        UI.Frame.Right.FULLSCREEN.Image = normalIcon
     else
         -- Animate back to original state
         TS:Create(Part, tweenInfo, {Size = originalState.Size}):Play()
         LookView = originalState.LookView
         SCALE = originalState.Scale
+        UI.Frame.Right.FULLSCREEN.Image = fullscreenIcon
     end
 end)
 
@@ -2544,7 +2472,6 @@ HandleEvent(UI.Frame.ResizeHandle.InputBegan, function(input)
         isResizing = true
         initialMousePos = Vector2.new(input.Position.X, input.Position.Y)
         initialSize = Part.Size
-        -- Disable UI hiding while resizing
         Config["FrameCooldown"] = true
     end
 end)
@@ -2553,10 +2480,8 @@ HandleEvent(UIS.InputChanged, function(input)
         local currentMousePos = Vector2.new(input.Position.X, input.Position.Y)
         local delta = currentMousePos - initialMousePos
         
-        -- Adjust size based on delta, scaling it down to feel right
         local newSize = initialSize + Vector3.new(delta.X * 0.05, -delta.Y * 0.05, 0)
         
-        -- Clamp the size within min/max limits
         newSize = Vector3.new(
             math.clamp(newSize.X, minSize.X, maxSize.X),
             math.clamp(newSize.Y, minSize.Y, maxSize.Y),
@@ -2568,11 +2493,40 @@ end)
 HandleEvent(UIS.InputEnded, function(input)
     if isResizing and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
         isResizing = false
-        -- Re-enable UI hiding
         Config["FrameCooldown"] = false
     end
 end)
--- [[ FEATURE END: Fullscreen and Resizer Logic ]]
+
+-- [[ FEATURE: New Minimize/Transparency Logic ]]
+local isFaded = false
+HandleEvent(UI.Frame.Right.MINIMIZE.MouseButton1Click, function()
+    if Config["FrameCooldown"] then return end
+    Config["FrameCooldown"] = true
+    isFaded = not isFaded
+    
+    local Time = 0.5
+    local targetTransparency = isFaded and 0.8 or 0
+    
+    for i,v in next, Frame:GetDescendants() do
+        if v:IsA("GuiObject") then
+            local props = {}
+            if v:IsA("TextLabel") or v:IsA("TextButton") then props.TextTransparency = targetTransparency end
+            if v:IsA("ImageLabel") or v:IsA("ImageButton") then props.ImageTransparency = targetTransparency end
+            if v:IsA("Frame") or v:IsA("ScrollingFrame") then props.BackgroundTransparency = (v.Name == "Line" and 1) or targetTransparency end
+            
+            TS:Create(v, TweenInfo.new(Time), props):Play()
+        end
+    end
+
+    task.wait(Time + 0.1)
+    Config["FrameCooldown"] = false
+end)
+
+HandleEvent(UI.Frame.Right.EXIT.MouseButton1Click, function()
+    Frame.Visible = false
+    if OpenButton then OpenButton.Visible = true end
+end)
+
 
 do -- Breathing
 	
@@ -2605,6 +2559,7 @@ setmetatable(Library, { -- Config Manager
 			return pcall(function()
 				UI.Frame.Main.PlayerName:SetAttribute("Text", value)
 				UI.Frame.Main.PlayerName.Text = value
+                if OpenButton then OpenButton.Text = value end
 			end)
 		end
 		return rawset(Library, base, value)
@@ -2616,34 +2571,34 @@ function Library:Config()
 	Config.Breathing = Storage.Data["LinenLib_Breathing"]
 	Library:Toggle({ Text = "Breathing", Value = type(Storage.Data["LinenLib_Breathing"])=="nil" and true or Storage.Data["LinenLib_Breathing"], Callback = function(value) Storage.Data["LinenLib_Breathing"] = value; Config.Breathing = value end })
 	Library:Toggle({ Text = "Always On Top", Value = type(Storage.Data["LinenLib_AOT"])=="nil" and true or Storage.Data["LinenLib_AOT"], Callback = function(value) Storage.Data["LinenLib_AOT"] = value;UI["AlwaysOnTop"] = value end })
-	Library:Keybind({ Text = "Toggle", Value = Storage.Data["LinenLib_Toggle"] , Callback = function(keycode) Storage.Data["LinenLib_Toggle"] = keycode;Frame.Visible = not Frame.Visible end })
+	Library:Keybind({ Text = "Toggle Key", Value = Storage.Data["LinenLib_Toggle"] or "RightShift", Callback = function() end, OnChange = function(key) Config.ToggleKey = Enum.KeyCode[key] or Enum.KeyCode.RightShift end })
 	
 	--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	Library:Slider({
 		Text = "Z", -- Text of Slider
 	
-		Min = math.abs(LookView.Z), -- Minimum Value
-		Value = Storage.Data["LinenLib_Z"] or math.abs(LookView.Z), -- Value of the Slider
-		Max = math.abs(LookView.Z) + 20, -- Max value of the slider
+		Min = 1,
+		Value = Storage.Data["LinenLib_Z"] or math.abs(LookView.Z),
+		Max = 40,
 	
-		WaitForMouse = true, -- Wait for player mouse to stop being held to fire callback
+		WaitForMouse = true,
 	
-		Callback = function(value, prevalue) -- What will be called when slider value changes
+		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_Z"]  = value
 			LookView = Vector3.new(LookView.X, LookView.Y, -value)
 		end,
 	})
 	
 	Library:Slider({
-		Text = "Y", -- Text of Slider
+		Text = "Y",
 	
-		Min = 0, -- Minimum Value
-		Value = Storage.Data["LinenLib_Y"] or 0 , -- Value of the Slider
-		Max = 5, -- Max value of the slider
+		Min = 0,
+		Value = Storage.Data["LinenLib_Y"] or 0,
+		Max = 5,
 	
-		WaitForMouse = true, -- Wait for player mouse to stop being held to fire callback
+		WaitForMouse = true,
 	
-		Callback = function(value, prevalue) -- What will be called when slider value changes
+		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_Y"] = value
 			if value~=prevalue then
 				LookView = Vector3.new(LookView.X, value, LookView.Z)
@@ -2654,15 +2609,15 @@ function Library:Config()
 	Library:Slider({
 	
 		Text = "R", -- Text of Slider
-		Step = 1, -- How many steps the slider goes up/down by [ 1 is default ]
+		Step = 1,
 	
-		Min = ( 0.01 * 100 ),  -- Minimum Value
-		Value = Storage.Data["LinenLib_R"] or SCALE * 100, -- Value of the Slider
-		Max = 21, -- Max value of the slider
+		Min = ( 0.01 * 100 ),
+		Value = Storage.Data["LinenLib_R"] or SCALE * 100,
+		Max = 21,
 	
-		WaitForMouse = true, -- Wait for player mouse to stop being held to fire callback
+		WaitForMouse = true,
 	
-		Callback = function(value) -- What will be called when slider value changes
+		Callback = function(value)
 			Storage.Data["LinenLib_R"] = value
 			SCALE = value/100
 		end,
@@ -2671,16 +2626,14 @@ function Library:Config()
 	
 	Library:Slider({
 	
-		Text = "G", -- Text of Slider
-		Step = 1, -- How many steps the slider goes up/down by [ 1 is default ]
+		Text = "G",
+		Step = 1,
 	
-		Min = 1,  -- Minimum Value
-		Value = Storage.Data["LinenLib_G"] or 6, -- Value of the Slider
-		Max = 20, -- Max value of the slider
+		Min = 1,
+		Value = Storage.Data["LinenLib_G"] or 6,
+		Max = 20,
 	
-		--WaitForMouse = true, -- Wait for player mouse to stop being held to fire callback
-	
-		Callback = function(value, prevalue) -- What will be called when slider value changes
+		Callback = function(value, prevalue)
 			Storage.Data["LinenLib_G"] = value
 			for i,v in next, AllFrames do
 				if v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton") or v:IsA("ScrollingFrame") then
@@ -2707,6 +2660,40 @@ end
 Library.Frame = Frame
 Library.Storage = Storage
 Library:Config() -- Loads settings
+
+-- [[ WindUI Style Open Button ]]
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+OpenButton = Instance.new("TextButton", ScreenGui)
+OpenButton.Text = "Linui"
+OpenButton.Size = UDim2.new(0, 150, 0, 40)
+OpenButton.Position = UDim2.new(0, 20, 0.5, 0)
+OpenButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenButton.Font = Enum.Font.GothamSemibold
+OpenButton.TextSize = 16
+OpenButton.Visible = false -- Initially hidden
+OpenButton.Draggable = true
+OpenButton.Active = true
+
+local obCorner = Instance.new("UICorner", OpenButton)
+obCorner.CornerRadius = UDim.new(0, 8)
+local obStroke = Instance.new("UIStroke", OpenButton)
+obStroke.Color = Color3.fromRGB(80, 80, 80)
+
+HandleEvent(OpenButton.MouseButton1Click, function()
+    Frame.Visible = true
+    OpenButton.Visible = false
+end)
+
+-- Global Toggle Logic
+HandleEvent(UIS.InputBegan, function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Config.ToggleKey then
+        Frame.Visible = not Frame.Visible
+        OpenButton.Visible = not Frame.Visible
+    end
+end)
+
 
 -- .<(:D _^_ D:)>.
 return Library
