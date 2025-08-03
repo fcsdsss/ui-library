@@ -15,7 +15,7 @@
 ]]
 
 -- 2000+ Lines, crazy isn't it?
--- Version: 1.5 (Interaction & UX Refinement)
+-- Version: 1.5 (Interaction & UX Refinement) - MODIFIED AS PER USER REQUEST
 STRING = "Fixes:"
 --[[
 	* Fixed UI click-related bugs
@@ -421,43 +421,32 @@ do -- Main UI
 	UIAspectRatioConstraint_4["AspectRatio"] = 0.48230084776878357
 	UIAspectRatioConstraint_4["Parent"] = Frame_2
 	
-    -- [[ FEATURE: Fullscreen Button ]]
-    local FULLSCREEN = Instance.new("ImageButton")
+    -- [[ MODIFIED SECTION START: Control Buttons ]]
+
+    -- [[ FEATURE: Fullscreen Button (MODIFIED to a Green Button) ]]
+    local FULLSCREEN = Instance.new("TextButton") -- MODIFIED: 从 ImageButton 改为 TextButton
     FULLSCREEN.Name = "FULLSCREEN"
     FULLSCREEN.BackgroundTransparency = 1
-    FULLSCREEN.Size = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
-    FULLSCREEN.Position = UDim2.new(0.76, 0, 0.008, 0)
-    FULLSCREEN.Image = "http://www.roblox.com/asset/?id=284412499" -- Expand icon
-    FULLSCREEN.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    FULLSCREEN.Size = UDim2.new(0.08, 0, 0.045, 0)
+    -- MODIFIED: 调整了位置，使其在红色按钮左侧并有间距
+    FULLSCREEN.Position = UDim2.new(0.81, 0, 0.008, 0) 
+    FULLSCREEN.Text = "" -- 无需文本
     FULLSCREEN.Parent = Right
-	
-	local MINIMIZE = Instance.new("TextButton")
-	MINIMIZE["TextWrapped"] = true
-	MINIMIZE["BorderSizePixel"] = 0
-	MINIMIZE["Name"] = "MINIMIZE"
-	MINIMIZE["TextSize"] = 14
-	MINIMIZE["TextScaled"] = true
-	MINIMIZE["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
-	MINIMIZE["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	MINIMIZE["Size"] = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
-	MINIMIZE["Position"] = UDim2.new(0.84, 0, 0.008, 0)
-	MINIMIZE["TextColor3"] = Color3.fromRGB(0, 0, 0)
-	MINIMIZE["BorderColor3"] = Color3.fromRGB(0, 0, 0)
-	MINIMIZE["Text"] = ""
-	MINIMIZE["Font"] = Enum.Font.SourceSans
-	MINIMIZE["Parent"] = Right
-	
-	local UITextSizeConstraint_2 = Instance.new("UITextSizeConstraint")
-	UITextSizeConstraint_2["MaxTextSize"] = 14
-	UITextSizeConstraint_2["Parent"] = MINIMIZE
-	
-	local UICorner_3 = Instance.new("UICorner")
-	UICorner_3["CornerRadius"] = UDim.new(1, 0)
-	UICorner_3["Parent"] = MINIMIZE
-	
-	local UIGradient = Instance.new("UIGradient")
-	UIGradient["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(145.00000655651093, 145.00000655651093, 10.000000353902578)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(191.00000381469727, 143.00000667572021, 0)) })
-	UIGradient["Parent"] = MINIMIZE
+
+    -- NEW: 为绿色按钮添加样式
+    local fullScreenCorner = Instance.new("UICorner")
+    fullScreenCorner.CornerRadius = UDim.new(1, 0)
+    fullScreenCorner.Parent = FULLSCREEN
+
+    local fullScreenGradient = Instance.new("UIGradient")
+    -- NEW: 设置绿色渐变
+    fullScreenGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 145, 10)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 191, 0))
+    })
+    fullScreenGradient.Parent = FULLSCREEN
+
+	-- DELETED: 黄色 MINIMIZE 按钮已移除
 	
 	local EXIT = Instance.new("TextButton")
 	EXIT["TextWrapped"] = true
@@ -467,8 +456,9 @@ do -- Main UI
 	EXIT["TextScaled"] = true
 	EXIT["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
 	EXIT["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-	EXIT["Size"] = UDim2.new(0.06, 0, 0.03, 0) -- Increased size
-	EXIT["Position"] = UDim2.new(0.92, 0, 0.008, 0)
+	EXIT.Size = UDim2.new(0.08, 0, 0.045, 0)
+	-- MODIFIED: 调整了位置，使其在绿色按钮右侧并有间距
+	EXIT.Position = UDim2.new(0.9, 0, 0.008, 0)
 	EXIT["TextColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["BorderColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["Text"] = ""
@@ -486,6 +476,8 @@ do -- Main UI
 	local UIGradient_1 = Instance.new("UIGradient")
 	UIGradient_1["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(145.00000655651093, 6.000000117346644, 8.000000473111868)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(191.00000381469727, 0, 0)) })
 	UIGradient_1["Parent"] = EXIT
+
+    -- [[ MODIFIED SECTION END ]]
 	
 	local UICorner_5 = Instance.new("UICorner")
 	UICorner_5["CornerRadius"] = UDim.new(0.029999999329447746, 0)
@@ -2433,9 +2425,8 @@ local AllFrames = Frame:GetChildren()
 -- [[ FEATURE: Fullscreen, Resizer, and Visibility Logic ]]
 local isFullScreen = false
 local originalState = {}
-local fullscreenIcon = "http://www.roblox.com/asset/?id=284412499" -- Expand
-local normalIcon = "http://www.roblox.com/asset/?id=284412574" -- Shrink
 
+-- [[ MODIFIED SECTION START: Updated Fullscreen Logic ]]
 HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
     isFullScreen = not isFullScreen
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -2453,15 +2444,17 @@ HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
         TS:Create(Part, tweenInfo, fullscreenProperties):Play()
         LookView = Vector3.new(0, 0, -1.8) -- Move closer to camera
         SCALE = 0 -- Disable tilt
-        UI.Frame.Right.FULLSCREEN.Image = normalIcon
+        -- DELETED: 不再需要修改图片
     else
         -- Animate back to original state
         TS:Create(Part, tweenInfo, {Size = originalState.Size}):Play()
         LookView = originalState.LookView
         SCALE = originalState.Scale
-        UI.Frame.Right.FULLSCREEN.Image = fullscreenIcon
+        -- DELETED: 不再需要修改图片
     end
 end)
+-- [[ MODIFIED SECTION END ]]
+
 
 local isResizing = false
 local initialMousePos, initialSize
@@ -2497,30 +2490,7 @@ HandleEvent(UIS.InputEnded, function(input)
     end
 end)
 
--- [[ FEATURE: New Minimize/Transparency Logic ]]
-local isFaded = false
-HandleEvent(UI.Frame.Right.MINIMIZE.MouseButton1Click, function()
-    if Config["FrameCooldown"] then return end
-    Config["FrameCooldown"] = true
-    isFaded = not isFaded
-    
-    local Time = 0.5
-    local targetTransparency = isFaded and 0.8 or 0
-    
-    for i,v in next, Frame:GetDescendants() do
-        if v:IsA("GuiObject") then
-            local props = {}
-            if v:IsA("TextLabel") or v:IsA("TextButton") then props.TextTransparency = targetTransparency end
-            if v:IsA("ImageLabel") or v:IsA("ImageButton") then props.ImageTransparency = targetTransparency end
-            if v:IsA("Frame") or v:IsA("ScrollingFrame") then props.BackgroundTransparency = (v.Name == "Line" and 1) or targetTransparency end
-            
-            TS:Create(v, TweenInfo.new(Time), props):Play()
-        end
-    end
-
-    task.wait(Time + 0.1)
-    Config["FrameCooldown"] = false
-end)
+-- DELETED: 黄色按钮的点击事件逻辑已移除
 
 HandleEvent(UI.Frame.Right.EXIT.MouseButton1Click, function()
     Frame.Visible = false
