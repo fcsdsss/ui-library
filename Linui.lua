@@ -15,8 +15,7 @@
 ]]
 
 -- 2000+ Lines, crazy isn't it?
--- Version: 1
-
+-- Version: 1.1 (Mobile Patched)
 STRING = "Fixes:"
 --[[
 	* Fixed UI click-related bugs
@@ -29,6 +28,7 @@ STRING = "Fixes:"
 STRING = "Updates:"
 --[[
 	* Added Colorpicker
+    * Patched for mobile experience (Slider and UI hiding)
 ]]
 
 local __original_require = require
@@ -1267,7 +1267,6 @@ do -- UI Functions
 		Data = type(Data)=="table" and Data or {}
 		Data.Name = Data.Name or Data.Text or "Example"
 		Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
-		--Data.Tab = Data.Tab and (function() for i,v in next, Frame:GetDescendants() do if v.ClassName:find("Frame") and v.Name==Data.Tab then return v end end end)() or Frame:FindFirstChild("Right")
 	
 		Data.Min = Data.Min or Data.Minimum or Data.min or Data.minimum or 1
 		Data.Max = Data.Max or Data.Maximum or Data.max or Data.maximum or 10
@@ -1281,7 +1280,6 @@ do -- UI Functions
 		Data.Step = Data.Step and Data.Step/100 or 0.01
 	
 		local SliderExample = Examples:FindFirstChild("Slider")
-		local SliderDown = false
 		if not SliderExample then return; end
 	
 		SliderExample = SliderExample:Clone()
@@ -1294,80 +1292,82 @@ do -- UI Functions
 		SliderExample.Parent = (Data.Tab:FindFirstChildOfClass("ScrollingFrame") and Data.Tab:FindFirstChildOfClass("ScrollingFrame"):FindFirstChildOfClass("ScrollingFrame") or Data.Tab:FindFirstChildOfClass("ScrollingFrame")) or Data.Tab
 	
 		local bar = SliderExample
-		local mouse = Mouse.Mouse
+		local viewSlider = bar.ViewSlider
 		
-		local MouseWasDown = false
-		local cachedValue = Data.Value
+		local isDragging = false
 		local prevalue = Data.Value
-		
-		HandleEvent(bar.MouseEnter:Connect(function()
-			SliderDown = true
-		end))
-		
-		HandleEvent(bar.MouseMoved:Connect(function(X, Y)
-			
-			if not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then return; end
-			if not SliderDown then return; end
+	
+		-- 统一处理值更新和UI表现的函数
+		local function updateSlider(inputValue)
 			if not UIExist() then return; end
 			
-			MouseWasDown = true
-			local percent = ((X) - bar.ViewSlider.AbsolutePosition.X) / bar.ViewSlider.AbsoluteSize.X
-			if cachedValue then percent = (Data.Value - Data.Min) / (Data.Max - Data.Min) end
-	
+			local percent = (inputValue - Data.Min) / (Data.Max - Data.Min)
 			percent = math.clamp(percent, 0, 1)
-			local value = cachedValue or math.floor(Data.Min + (Data.Max - Data.Min) * percent)
-	
-			if value ~= (string.split(SliderExample.ViewSlider.Value.Text, "/")[1] or Min) then
-				if not Data.WaitForMouse then
-					local called, message = pcall(Data.Callback, tonumber(value), Data, prevalue)
+			
+			Data.Value = inputValue
+			viewSlider.Value.Text = `{inputValue}/{Data.Max}`
+			TS:Create(viewSlider.Button, TweenInfo.new(0.1), { Size = UDim2.new(percent, 0, 1, 0) }):Play()
+			
+			if not Data.WaitForMouse then
+				if inputValue ~= prevalue then
+					local called, message = pcall(Data.Callback, tonumber(inputValue), Data, prevalue)
 					if not called then
 						warn("[ Linui Library: Slider Bug ] "..Data.Name..": "..message)
 					end
+					prevalue = tonumber(inputValue)
+				end
+			end
+		end
+	
+		-- 监听输入开始（鼠标按下或触摸开始）
+		HandleEvent(viewSlider.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				isDragging = true
+				-- 立即更新一次位置，以响应单击
+				local percent = (input.Position.X - viewSlider.AbsolutePosition.X) / viewSlider.AbsoluteSize.X
+				percent = math.clamp(percent, 0, 1)
+				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5) -- +0.5用于四舍五入
+				updateSlider(value)
+			end
+		end))
+	
+		-- 监听输入变化（鼠标移动或手指拖动）
+		HandleEvent(viewSlider.InputChanged:Connect(function(input)
+			if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local percent = (input.Position.X - viewSlider.AbsolutePosition.X) / viewSlider.AbsoluteSize.X
+				percent = math.clamp(percent, 0, 1)
+				local value = math.floor(Data.Min + (Data.Max - Data.Min) * percent + 0.5) -- +0.5用于四舍五入
+				updateSlider(value)
+			end
+		end))
+	
+		-- 监听输入结束（鼠标松开或触摸结束）
+		HandleEvent(viewSlider.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if isDragging and Data.WaitForMouse then
+					-- 在拖动结束后，如果设置了WaitForMouse，则触发回调
+					pcall(Data.Callback, tonumber(Data.Value), prevalue)
 					prevalue = tonumber(Data.Value)
 				end
+				isDragging = false
 			end
-			
-			SliderExample.ViewSlider.Value.Text = `{value}/{Data.Max}`
-			TS:Create(bar.ViewSlider.Button, TweenInfo.new(0.1), { Size = UDim2.new(percent, 0, 1, 0) }):Play()
-			
-			Data.Value = value
-			cachedValue = nil
-			
 		end))
 		
-		HandleEvent(bar.MouseLeave:Connect(function()
-			SliderDown = false
-		end))
-		
-		WrapFunction(function()
-			while task.wait() do
-				if not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then 
-					if MouseWasDown then
-						MouseWasDown = false
-						if Data.WaitForMouse then
-							
-							pcall(Data.Callback, tonumber(Data.Value), prevalue)
-							prevalue = tonumber(Data.Value)
-						end
-					end
-				end
-			end
-		end)
 		--=====================================
-		local SliderTable = { Object = SliderExample.ViewSlider }
+		local SliderTable = { Object = viewSlider }
 	
 		function SliderTable:Set(value, nocall)
 			if not UIExist() then return; end
 			value = type(value)=="number" and value or Data.Value or Data.Min
+			local clampedValue = math.clamp(value, Data.Min, Data.Max)
 	
-			local percent = (value - Data.Min) / (Data.Max - Data.Min)
-			percent = math.clamp(percent, 0, 1)
-	
-			SliderExample.ViewSlider.Value.Text = `{value}/{Data.Max}`
-			TS:Create(bar.ViewSlider.Button, TweenInfo.new(0.1), { Size = UDim2.new(percent, 0, 1, 0) }):Play()
+			local percent = (clampedValue - Data.Min) / (Data.Max - Data.Min)
+			
+			viewSlider.Value.Text = `{clampedValue}/{Data.Max}`
+			TS:Create(viewSlider.Button, TweenInfo.new(0.1), { Size = UDim2.new(percent, 0, 1, 0) }):Play()
 			
 			if not nocall then
-				local called, message = pcall(Data.Callback, tonumber(value), prevalue)
+				local called, message = pcall(Data.Callback, tonumber(clampedValue), prevalue)
 				if not called then
 					warn("[ Linui Library: Slider Bug ] "..Data.Name..": "..message)
 				end
@@ -1382,7 +1382,7 @@ do -- UI Functions
 			if not UIExist() then return; end
 			value = type(value)=="string" and value or nil
 			if value then
-				SliderExample.ViewSlider.Label.Text = value
+				viewSlider.Label.Text = value
 			end
 		end
 		
@@ -2381,70 +2381,52 @@ end
 -------------------------------------- UI: Breathing, Config
 local AllFrames = Frame:GetChildren()
 
-Cache.add(UIS.InputBegan:Connect(function(keycode, chat)
-	if chat then return; end
-	-------------------------------------
-	local keyname = (keycode["KeyCode"]["Name"] or ""):lower();
-	if keyname=="unknown" then
-		for i,v in next, Enum.UserInputType:GetEnumItems() do
-			if keycode.UserInputType==v and v and type(v["Name"])=='string' then
-				keyname = v["Name"]:lower()
-			end
-		end
-	end
-	-------------------------------------
-	Config.Keys[keyname] = tick()
-	if keyname == "mousebutton1" then
+-- [[ MOBILE PATCH START: UI HIDING ]]
+Cache.add(UIS.InputBegan:Connect(function(input, gameProcessedEvent)
+	-- 如果输入事件已被任何UI元素处理（例如点击按钮），则直接返回，不执行隐藏逻辑
+	if gameProcessedEvent then return; end
+
+	-- 只对触摸点击或鼠标左键点击做出反应
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		
-		local InFrame = true
+		if Config["FrameCooldown"] then return; end
+		Config["FrameCooldown"] = true
+		
 		local Time = .5
 		AllFrames = Frame:GetChildren()
-		
-		for i,v in next, AllFrames do
+					
+		for i,v in next, Frame:GetChildren() do
 			if v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton") or v:IsA("ScrollingFrame") then
-				if not Mouse:MouseInFrame(v) then
-					InFrame = false
+
+				if StoredTransparency[v] then
+					TS:Create(v, TweenInfo.new(Time), { Transparency = StoredTransparency[v] }):Play()
+					StoredTransparency[v] = nil
+				else
+					StoredTransparency[v] = v.Transparency
+					TS:Create(v, TweenInfo.new(Time), { Transparency = v.Transparency + .2 }):Play()
 				end
-			end
-		end
-		
-		if not InFrame then
-			
-			if Config["FrameCooldown"] then return; end
-			Config["FrameCooldown"] = true
-						
-			for i,v in next, Frame:GetChildren() do
-				if v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton") or v:IsA("ScrollingFrame") then
 
-					if StoredTransparency[v] then
-						TS:Create(v, TweenInfo.new(Time), { Transparency = StoredTransparency[v] }):Play()
-						StoredTransparency[v] = nil
-					else
-						StoredTransparency[v] = v.Transparency
-						TS:Create(v, TweenInfo.new(Time), { Transparency = v.Transparency + .2 }):Play()
-					end
-
-					for i, v in next, v:GetDescendants() do
-						if v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton") or v:IsA("ScrollingFrame") then
-							if StoredTransparency[v] then
-								TS:Create(v, TweenInfo.new(Time), { Transparency = StoredTransparency[v] }):Play()
-								StoredTransparency[v] = nil
-							else
-								StoredTransparency[v] = v.Transparency
-								TS:Create(v, TweenInfo.new(Time), { Transparency = v.Transparency + .2 }):Play()
-							end
+				for i, v_descendant in next, v:GetDescendants() do
+					if v_descendant:IsA("Frame") or v_descendant:IsA("ImageLabel") or v_descendant:IsA("ImageButton") or v_descendant:IsA("ScrollingFrame") then
+						if StoredTransparency[v_descendant] then
+							TS:Create(v_descendant, TweenInfo.new(Time), { Transparency = StoredTransparency[v_descendant] }):Play()
+							StoredTransparency[v_descendant] = nil
+						else
+							StoredTransparency[v_descendant] = v_descendant.Transparency -- Patched potential bug
+							TS:Create(v_descendant, TweenInfo.new(Time), { Transparency = v_descendant.Transparency + .2 }):Play()
 						end
 					end
-
 				end
+
 			end
-			
-			task.wait( Time + .1 )
-			Config["FrameCooldown"] = false
-			
 		end
+		
+		task.wait( Time + .1 )
+		Config["FrameCooldown"] = false
+			
 	end
 end))
+-- [[ MOBILE PATCH END: UI HIDING ]]
 
 do -- Breathing
 	
