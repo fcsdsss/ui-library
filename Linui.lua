@@ -423,30 +423,27 @@ do -- Main UI
 	
     -- [[ MODIFIED SECTION START: Control Buttons ]]
 
-    -- [[ FEATURE: Fullscreen Button (MODIFIED to a Green Button) ]]
-    local FULLSCREEN = Instance.new("TextButton") -- MODIFIED: 从 ImageButton 改为 TextButton
-    FULLSCREEN.Name = "FULLSCREEN"
-    FULLSCREEN.BackgroundTransparency = 1
-    FULLSCREEN.Size = UDim2.new(0.08, 0, 0.045, 0)
-    -- MODIFIED: 调整了位置，使其在红色按钮左侧并有间距
-    FULLSCREEN.Position = UDim2.new(0.81, 0, 0.008, 0) 
-    FULLSCREEN.Text = "" -- 无需文本
-    FULLSCREEN.Parent = Right
+    -- DELETED: 全屏按钮已移除
+    
+	-- NEW: 恢复黄色按钮，用于隐藏UI
+	local MINIMIZE = Instance.new("TextButton")
+	MINIMIZE.Name = "MINIMIZE"
+	MINIMIZE.Size = UDim2.new(0.08, 0, 0.045, 0)
+	MINIMIZE.Position = UDim2.new(0.81, 0, 0.008, 0)
+	MINIMIZE.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	MINIMIZE.Text = ""
+    MINIMIZE.Parent = Right
 
-    -- NEW: 为绿色按钮添加样式
-    local fullScreenCorner = Instance.new("UICorner")
-    fullScreenCorner.CornerRadius = UDim.new(1, 0)
-    fullScreenCorner.Parent = FULLSCREEN
+    local minimizeCorner = Instance.new("UICorner")
+    minimizeCorner.CornerRadius = UDim.new(1, 0)
+    minimizeCorner.Parent = MINIMIZE
 
-    local fullScreenGradient = Instance.new("UIGradient")
-    -- NEW: 设置绿色渐变
-    fullScreenGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 145, 10)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 191, 0))
+    local minimizeGradient = Instance.new("UIGradient")
+    minimizeGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 160, 0))
     })
-    fullScreenGradient.Parent = FULLSCREEN
-
-	-- DELETED: 黄色 MINIMIZE 按钮已移除
+    minimizeGradient.Parent = MINIMIZE
 	
 	local EXIT = Instance.new("TextButton")
 	EXIT["TextWrapped"] = true
@@ -457,7 +454,6 @@ do -- Main UI
 	EXIT["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
 	EXIT["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 	EXIT.Size = UDim2.new(0.08, 0, 0.045, 0)
-	-- MODIFIED: 调整了位置，使其在绿色按钮右侧并有间距
 	EXIT.Position = UDim2.new(0.9, 0, 0.008, 0)
 	EXIT["TextColor3"] = Color3.fromRGB(0, 0, 0)
 	EXIT["BorderColor3"] = Color3.fromRGB(0, 0, 0)
@@ -2223,7 +2219,7 @@ do -- UI Functions
 		Section.BackgroundTransparency = 0.400
 		Section.BorderColor3 = Color3.fromRGB(0, 0, 0)
 		Section.BorderSizePixel = 0
-		Section.Position = UDim2.new(-4.31409859e-08, 0, -1.04034665e-08, 0)
+		Section.Position = UDim2.new(-4.31409859e-08, 0, -1.0403466532693528e-08, 0)
 		Section.Size = UDim2.new(1.00000012, 0, 0.259604543, 0)
 	
 		UICorner.CornerRadius = UDim.new(0, 0)
@@ -2422,40 +2418,8 @@ end
 -------------------------------------- UI: Breathing, Config
 local AllFrames = Frame:GetChildren()
 
--- [[ FEATURE: Fullscreen, Resizer, and Visibility Logic ]]
-local isFullScreen = false
-local originalState = {}
-
--- [[ MODIFIED SECTION START: Updated Fullscreen Logic ]]
-HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
-    isFullScreen = not isFullScreen
-    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-    
-    if isFullScreen then
-        -- Save original state
-        originalState.LookView = LookView
-        originalState.Size = Part.Size
-        originalState.Scale = SCALE
-        
-        -- Animate to fullscreen
-        local fullscreenProperties = {
-            Size = Vector3.new(35, 20, 2) -- Fullscreen size
-        }
-        TS:Create(Part, tweenInfo, fullscreenProperties):Play()
-        LookView = Vector3.new(0, 0, -1.8) -- Move closer to camera
-        SCALE = 0 -- Disable tilt
-        -- DELETED: 不再需要修改图片
-    else
-        -- Animate back to original state
-        TS:Create(Part, tweenInfo, {Size = originalState.Size}):Play()
-        LookView = originalState.LookView
-        SCALE = originalState.Scale
-        -- DELETED: 不再需要修改图片
-    end
-end)
--- [[ MODIFIED SECTION END ]]
-
-
+-- [[ MODIFIED: Visibility Logic ]]
+-- DELETED: Fullscreen logic removed
 local isResizing = false
 local initialMousePos, initialSize
 local minSize = Vector3.new(15, 8, 2)
@@ -2490,8 +2454,6 @@ HandleEvent(UIS.InputEnded, function(input)
     end
 end)
 
--- DELETED: 黄色按钮的点击事件逻辑已移除
-
 HandleEvent(UI.Frame.Right.EXIT.MouseButton1Click, function()
     Frame.Visible = false
     if OpenButton then OpenButton.Visible = true end
@@ -2507,7 +2469,6 @@ do -- Breathing
 	WrapFunction(function()
 		Loop(function()
 			if not Config.Breathing and started==PartIncreased then return; end
-            if isFullScreen then return end -- Don't breathe in fullscreen
 			TS:Create(Part, TweenInfo.new(waitTime), { Size = Part.Size + (PartIncreased and Vector3.new(-X, -Y, -Z) or Vector3.new(X, Y, Z)) }):Play()
 			task.wait(waitTime)
 			PartIncreased = not PartIncreased
@@ -2631,7 +2592,10 @@ Library.Frame = Frame
 Library.Storage = Storage
 Library:Config() -- Loads settings
 
--- [[ WindUI Style Open Button ]]
+
+-- [[ FINAL MODIFICATIONS START ]]
+
+-- [[ 1. Draggable Open Button (for Red Exit Button) ]]
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 OpenButton = Instance.new("TextButton", ScreenGui)
 OpenButton.Text = "Linui"
@@ -2655,15 +2619,53 @@ HandleEvent(OpenButton.MouseButton1Click, function()
     OpenButton.Visible = false
 end)
 
--- Global Toggle Logic
-HandleEvent(UIS.InputBegan, function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Config.ToggleKey then
-        Frame.Visible = not Frame.Visible
-        OpenButton.Visible = not Frame.Visible
-    end
+-- [[ 2. Top-Center Show/Hide Button (for Yellow Minimize Button) ]]
+local TopCenterButton = Instance.new("TextButton", ScreenGui)
+TopCenterButton.Name = "TopCenterShowButton"
+TopCenterButton.AnchorPoint = Vector2.new(0.5, 0)
+TopCenterButton.Position = UDim2.new(0.5, 0, 0, 10)
+TopCenterButton.Size = UDim2.new(0, 120, 0, 30)
+TopCenterButton.Text = "显示 Linui"
+TopCenterButton.Font = Enum.Font.GothamSemibold
+TopCenterButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+TopCenterButton.TextSize = 14
+TopCenterButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TopCenterButton.BackgroundTransparency = 0.3
+TopCenterButton.Visible = false -- Initially hidden
+
+local tcbCorner = Instance.new("UICorner", TopCenterButton)
+tcbCorner.CornerRadius = UDim.new(0, 6)
+local tcbStroke = Instance.new("UIStroke", TopCenterButton)
+tcbStroke.Color = Color3.fromRGB(100, 100, 100)
+tcbStroke.Transparency = 0.5
+
+-- Event for Yellow Button
+HandleEvent(UI.Frame.Right.MINIMIZE.MouseButton1Click, function()
+    Frame.Visible = false
+    TopCenterButton.Visible = true
+end)
+
+-- Event for Top-Center Button
+HandleEvent(TopCenterButton.MouseButton1Click, function()
+    Frame.Visible = true
+    TopCenterButton.Visible = false
 end)
 
 
--- .<(:D _^_ D:)>.
+-- [[ 3. Global Toggle Logic (RightShift) ]]
+HandleEvent(UIS.InputBegan, function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Config.ToggleKey then
+        -- This toggle affects the main 3D panel and the draggable side button
+        Frame.Visible = not Frame.Visible
+        OpenButton.Visible = not Frame.Visible
+        -- It should NOT affect the top-center button's visibility
+        if TopCenterButton.Visible then
+            TopCenterButton.Visible = false
+        end
+    end
+end)
+
+-- [[ FINAL MODIFICATIONS END ]]
+
 return Library
