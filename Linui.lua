@@ -15,7 +15,7 @@
 ]]
 
 -- 2000+ Lines, crazy isn't it?
--- Version: 1.2 (Full Mobile Optimization)
+-- Version: 1.3 (Feature Update)
 STRING = "Fixes:"
 --[[
 	* Fixed UI click-related bugs
@@ -23,12 +23,16 @@ STRING = "Fixes:"
 	* Fixed Toggles inverting wrong callback
 	* Made more hard to detect
 	* Fixed Colorpicker overriding screen
+    * Fixed top-right buttons not hiding
+    * Fixed Color Picker on mobile
 ]]
 
 STRING = "Updates:"
 --[[
 	* Added Colorpicker
     * Patched for mobile experience (Slider, UI hiding, and smooth tilting)
+    * Added Fullscreen button
+    * Added UI Resizer Handle
 ]]
 
 local __original_require = require
@@ -408,6 +412,36 @@ do -- Main UI
 	UIAspectRatioConstraint_4["AspectRatio"] = 0.48230084776878357
 	UIAspectRatioConstraint_4["Parent"] = Frame_2
 	
+    -- [[ FEATURE START: Fullscreen Button ]]
+	local FULLSCREEN = Instance.new("TextButton")
+	FULLSCREEN["TextWrapped"] = true
+	FULLSCREEN["BorderSizePixel"] = 0
+	FULLSCREEN["Name"] = "FULLSCREEN"
+	FULLSCREEN["TextSize"] = 14
+	FULLSCREEN["TextScaled"] = true
+	FULLSCREEN["BackgroundColor3"] = Color3.fromRGB(255, 255, 255)
+	FULLSCREEN["FontFace"] = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+	FULLSCREEN["Size"] = UDim2.new(0.04810125753283501, 0, 0.024390242993831635, 0)
+	FULLSCREEN["Position"] = UDim2.new(0.7645569443702698, 0, 0.008130080997943878, 0) -- Positioned next to MINIMIZE
+	FULLSCREEN["TextColor3"] = Color3.fromRGB(0, 0, 0)
+	FULLSCREEN["BorderColor3"] = Color3.fromRGB(0, 0, 0)
+	FULLSCREEN["Text"] = ""
+	FULLSCREEN["Font"] = Enum.Font.SourceSans
+	FULLSCREEN["Parent"] = Right
+	
+	local UITextSizeConstraint_fs = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint_fs["MaxTextSize"] = 14
+	UITextSizeConstraint_fs["Parent"] = FULLSCREEN
+	
+	local UICorner_fs = Instance.new("UICorner")
+	UICorner_fs["CornerRadius"] = UDim.new(1, 0)
+	UICorner_fs["Parent"] = FULLSCREEN
+	
+	local UIGradient_fs = Instance.new("UIGradient")
+	UIGradient_fs["Color"] = ColorSequence.new({  ColorSequenceKeypoint.new(0, Color3.fromRGB(8, 145, 41)) , ColorSequenceKeypoint.new(1, Color3.fromRGB(2, 171, 38)) })
+	UIGradient_fs["Parent"] = FULLSCREEN
+    -- [[ FEATURE END: Fullscreen Button ]]
+    
 	local MINIMIZE = Instance.new("TextButton")
 	MINIMIZE["TextWrapped"] = true
 	MINIMIZE["BorderSizePixel"] = 0
@@ -472,6 +506,22 @@ do -- Main UI
 	UIAspectRatioConstraint_5["AspectRatio"] = 0.4793006479740143
 	UIAspectRatioConstraint_5["Parent"] = Right
 	
+    -- [[ FEATURE START: Resizer Handle ]]
+    local ResizeHandle = Instance.new("ImageLabel")
+    ResizeHandle.Name = "ResizeHandle"
+    ResizeHandle.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+    ResizeHandle.BackgroundTransparency = 0.5
+    ResizeHandle.BorderSizePixel = 0
+    ResizeHandle.AnchorPoint = Vector2.new(1, 1)
+    ResizeHandle.Position = UDim2.new(1, 0, 1, 0)
+    ResizeHandle.Size = UDim2.new(0, 15, 0, 15)
+    ResizeHandle.ZIndex = 10
+    ResizeHandle.Parent = Frame
+    
+    local UICorner_rh = Instance.new("UICorner")
+    UICorner_rh.Parent = ResizeHandle
+    -- [[ FEATURE END: Resizer Handle ]]
+    
 	local UIAspectRatioConstraint_6 = Instance.new("UIAspectRatioConstraint")
 	UIAspectRatioConstraint_6["AspectRatio"] = 1.9428621530532837
 	UIAspectRatioConstraint_6["Parent"] = UI
@@ -2005,37 +2055,38 @@ do -- UI Functions
 		ViewColor.Label.Text = Data.Text
 
 		local frame = ViewColor:FindFirstChild("Frame")
-		local colorpicker = frame.Parent.Parent
 		
 		local colourWheel: ImageButton = frame:WaitForChild("ColourWheel")
-		local wheelPicker: ImageButton = colourWheel:WaitForChild("Picker")
+		local wheelPicker: ImageLabel = colourWheel:WaitForChild("Picker")
 		
 		local darknessPicker = frame:WaitForChild("DarknessPicker")
-		local darknessSlider: ImageButton = darknessPicker:WaitForChild("Slider")
+		local darknessSlider: ImageLabel = darknessPicker:WaitForChild("Slider")
 		
 		local colourDisplay = ViewColor:WaitForChild("ColorDisplay")
-		local UIS = game:GetService("UserInputService")
-		local TS = game:GetService("TweenService")
 		
 		local R, G, B = frame:FindFirstChild("R"), frame:FindFirstChild("G"), frame:FindFirstChild("B")
-		local buttonDown = false
-		local movingSlider = false
+        
+        -- [[ MOBILE PATCH START: Color Picker Input ]]
+		local isDraggingWheel = false
+        local isDraggingDarkness = false
+        -- [[ MOBILE PATCH END: Color Picker Input ]]
+        
 		local colorlib = {}
 
-		local function updateMouse(mousePos)
-	
+		local function updateMouse(inputPos)
 			local centreOfWheel = Vector2.new(colourWheel.AbsolutePosition.X + (colourWheel.AbsoluteSize.X/2), colourWheel.AbsolutePosition.Y + (colourWheel.AbsoluteSize.Y/2))
-			local distanceFromWheel = (mousePos - centreOfWheel).Magnitude
-		
-		
-			if distanceFromWheel <= colourWheel.AbsoluteSize.X/2 then
-				wheelPicker:TweenPosition(UDim2.new(0, mousePos.X - colourWheel.AbsolutePosition.X, 0, mousePos.Y - colourWheel.AbsolutePosition.Y), nil, nil, .05)
-			end
 			
-			if movingSlider then
+            if isDraggingWheel then
+    			local distanceFromWheel = (inputPos - centreOfWheel).Magnitude
+			    if distanceFromWheel <= colourWheel.AbsoluteSize.X/2 then
+				    wheelPicker:TweenPosition(UDim2.new(0, inputPos.X - colourWheel.AbsolutePosition.X, 0, inputPos.Y - colourWheel.AbsolutePosition.Y), nil, nil, .05)
+			    end
+            end
+			
+			if isDraggingDarkness then
 				darknessSlider:TweenPosition(UDim2.new(darknessSlider.Position.X.Scale, 0, 0, 
 					math.clamp(
-						mousePos.Y - darknessPicker.AbsolutePosition.Y, 
+						inputPos.Y - darknessPicker.AbsolutePosition.Y, 
 						0, 
 						darknessPicker.AbsoluteSize.Y)
 					)	, nil, nil, .05)
@@ -2045,10 +2096,9 @@ do -- UI Functions
 		end
 		
 		local function updateColour(centreOfWheel)
-		
 			local colourPickerCentre = Vector2.new(
-				colourWheel.Picker.AbsolutePosition.X + (colourWheel.Picker.AbsoluteSize.X/2),
-				colourWheel.Picker.AbsolutePosition.Y + (colourWheel.Picker.AbsoluteSize.Y/2)
+				wheelPicker.AbsolutePosition.X + (wheelPicker.AbsoluteSize.X/2),
+				wheelPicker.AbsolutePosition.Y + (wheelPicker.AbsoluteSize.Y/2)
 			)
 			
 			local h = (math.pi - math.atan2(colourPickerCentre.Y - centreOfWheel.Y, colourPickerCentre.X - centreOfWheel.X)) / (math.pi * 2)
@@ -2056,21 +2106,20 @@ do -- UI Functions
 			local v = math.abs((darknessSlider.AbsolutePosition.Y - darknessPicker.AbsolutePosition.Y) / darknessPicker.AbsoluteSize.Y - 1)
 			local hsv = Color3.fromHSV(math.clamp(h, 0, 1), math.clamp(s, 0, 1), math.clamp(v, 0, 1))
 			
-			TS:Create(colourDisplay, TweenInfo.new( movingSlider and .05 or .1 ), { 
+			TS:Create(colourDisplay, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { 
 				BackgroundColor3 = hsv
 			}):Play()
 			
 			darknessPicker.UIGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, hsv), 
+				ColorSequenceKeypoint.new(0, Color3.fromHSV(h, s, 1)), -- Use full brightness for the gradient
 				ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
 			}
 			
-			TS:Create(darknessSlider, TweenInfo.new( movingSlider and .05 or .1 ), { 
+			TS:Create(darknessSlider, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { 
 				ImageColor3 = hsv
 			}):Play()
 			
 			colorlib:Set(hsv)
-			
 		end	
 		
 		local ShowCooldown = false
@@ -2100,37 +2149,47 @@ do -- UI Functions
 
 			ShowCooldown = false
 		end))
-
-		HandleEvent(colourWheel.MouseMoved:Connect(function(x, y)
-			local mouse_position = Vector2.new(x, y)
-			if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-				buttonDown = true
-				updateColour(updateMouse(mouse_position))
-			else
-				buttonDown = false
-			end
-		end))
-
-		HandleEvent(darknessPicker.MouseMoved:Connect(function(x, y)
-			local mouse_position = Vector2.new(x, y)
-			if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-				movingSlider = true
-				updateColour(updateMouse(mouse_position))
-			else
-				movingSlider = false
-			end
-		end))
+        
+        -- [[ MOBILE PATCH START: Color Picker Input Logic ]]
+        HandleEvent(colourWheel.InputBegan, function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                isDraggingWheel = true
+                updateColour(updateMouse(input.Position))
+            end
+        end)
+        
+        HandleEvent(darknessPicker.InputBegan, function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                isDraggingDarkness = true
+                updateColour(updateMouse(input.Position))
+            end
+        end)
+        
+        HandleEvent(UIS.InputChanged, function(input)
+            if not (isDraggingWheel or isDraggingDarkness) then return end
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                updateColour(updateMouse(input.Position))
+            end
+        end)
+        
+        HandleEvent(UIS.InputEnded, function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                isDraggingWheel = false
+                isDraggingDarkness = false
+            end
+        end)
+        -- [[ MOBILE PATCH END: Color Picker Input Logic ]]
 
 		----------------------------------------
 		function colorlib:Set( color: Color3, nocall: boolean )
 			if typeof(color)=="Color3" then
 
-				TS:Create(colourDisplay, TweenInfo.new( movingSlider and .05 or .1 ), { 
+				TS:Create(colourDisplay, TweenInfo.new( (isDraggingWheel or isDraggingDarkness) and .05 or .1 ), { 
 					BackgroundColor3 = color
 				}):Play()
 
 				local _R, _G, _B = color.R * 255, color.G * 255, color.B * 255 -- I love complicating my code [ Im joking I did this for fun ]
-				_R, _G, _B = tostring(_R):split(".")[1], tostring(_G):split(".")[1], tostring(_B):split(".")[1]
+				_R, _G, _B = tostring(math.floor(_R + 0.5)), tostring(math.floor(_G + 0.5)), tostring(math.floor(_B + 0.5))
 	
 				if typeof(R)=="Instance" and R.ClassName:match("Text") then R.Text = _R end
 				if typeof(G)=="Instance" and G.ClassName:match("Text") then G.Text = _G end
@@ -2152,7 +2211,7 @@ do -- UI Functions
 		end
 
 		function colorlib:Get()
-			repeat task.wait(.06) until not buttonDown -- If they're picking a color, wait for them to be finished
+			repeat task.wait(.06) until not (isDraggingWheel or isDraggingDarkness) -- If they're picking a color, wait for them to be finished
 			return colourDisplay.BackgroundColor3
 		end
 
@@ -2409,21 +2468,31 @@ Cache.add(UIS.InputBegan:Connect(function(input, gameProcessedEvent)
 			if v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton") or v:IsA("ScrollingFrame") then
 
 				if StoredTransparency[v] then
-					TS:Create(v, TweenInfo.new(Time), { Transparency = StoredTransparency[v] }):Play()
+					TS:Create(v, TweenInfo.new(Time), { BackgroundTransparency = StoredTransparency[v], ImageTransparency = StoredTransparency[v] }):Play()
 					StoredTransparency[v] = nil
 				else
-					StoredTransparency[v] = v.Transparency
-					TS:Create(v, TweenInfo.new(Time), { Transparency = v.Transparency + .2 }):Play()
+					StoredTransparency[v] = v.BackgroundTransparency -- Store only one, assuming they are the same
+					TS:Create(v, TweenInfo.new(Time), { BackgroundTransparency = v.BackgroundTransparency + .2, ImageTransparency = v.ImageTransparency + .2 }):Play()
 				end
 
-				for i, v_descendant in next, v:GetDescendants() do
-					if v_descendant:IsA("Frame") or v_descendant:IsA("ImageLabel") or v_descendant:IsA("ImageButton") or v_descendant:IsA("ScrollingFrame") then
+				for _, v_descendant in next, v:GetDescendants() do
+					if v_descendant:IsA("GuiObject") and (v_descendant:IsA("Frame") or v_descendant:IsA("ImageLabel") or v_descendant:IsA("TextLabel") or v_descendant:IsA("ImageButton") or v_descendant:IsA("TextButton") or v_descendant:IsA("ScrollingFrame")) then
 						if StoredTransparency[v_descendant] then
-							TS:Create(v_descendant, TweenInfo.new(Time), { Transparency = StoredTransparency[v_descendant] }):Play()
+                            -- Restore transparency for all relevant properties
+							local props = {}
+							if v_descendant:IsA("TextLabel") or v_descendant:IsA("TextButton") then props.TextTransparency = StoredTransparency[v_descendant] end
+                            if v_descendant:IsA("ImageLabel") or v_descendant:IsA("ImageButton") then props.ImageTransparency = StoredTransparency[v_descendant] end
+                            props.BackgroundTransparency = StoredTransparency[v_descendant]
+							TS:Create(v_descendant, TweenInfo.new(Time), props):Play()
 							StoredTransparency[v_descendant] = nil
 						else
-							StoredTransparency[v_descendant] = v_descendant.Transparency -- Patched potential bug
-							TS:Create(v_descendant, TweenInfo.new(Time), { Transparency = v_descendant.Transparency + .2 }):Play()
+                            -- Store transparency and then tween it
+							StoredTransparency[v_descendant] = v_descendant.BackgroundTransparency
+							local props = {}
+							if v_descendant:IsA("TextLabel") or v_descendant:IsA("TextButton") then props.TextTransparency = v_descendant.TextTransparency + .2 end
+                            if v_descendant:IsA("ImageLabel") or v_descendant:IsA("ImageButton") then props.ImageTransparency = v_descendant.ImageTransparency + .2 end
+							props.BackgroundTransparency = v_descendant.BackgroundTransparency + .2
+							TS:Create(v_descendant, TweenInfo.new(Time), props):Play()
 						end
 					end
 				end
@@ -2438,6 +2507,73 @@ Cache.add(UIS.InputBegan:Connect(function(input, gameProcessedEvent)
 end))
 -- [[ MOBILE PATCH END: UI HIDING ]]
 
+-- [[ FEATURE START: Fullscreen and Resizer Logic ]]
+local isFullScreen = false
+local originalState = {}
+HandleEvent(UI.Frame.Right.FULLSCREEN.MouseButton1Click, function()
+    isFullScreen = not isFullScreen
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    
+    if isFullScreen then
+        -- Save original state
+        originalState.LookView = LookView
+        originalState.Size = Part.Size
+        originalState.Scale = SCALE
+        
+        -- Animate to fullscreen
+        local fullscreenProperties = {
+            Size = Vector3.new(35, 20, 2) -- Fullscreen size
+        }
+        TS:Create(Part, tweenInfo, fullscreenProperties):Play()
+        LookView = Vector3.new(0, 0, -1.8) -- Move closer to camera
+        SCALE = 0 -- Disable tilt
+    else
+        -- Animate back to original state
+        TS:Create(Part, tweenInfo, {Size = originalState.Size}):Play()
+        LookView = originalState.LookView
+        SCALE = originalState.Scale
+    end
+end)
+
+local isResizing = false
+local initialMousePos, initialSize
+local minSize = Vector3.new(15, 8, 2)
+local maxSize = Vector3.new(50, 30, 2)
+HandleEvent(UI.Frame.ResizeHandle.InputBegan, function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isResizing = true
+        initialMousePos = Vector2.new(input.Position.X, input.Position.Y)
+        initialSize = Part.Size
+        -- Disable UI hiding while resizing
+        Config["FrameCooldown"] = true
+    end
+end)
+HandleEvent(UIS.InputChanged, function(input)
+    if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local currentMousePos = Vector2.new(input.Position.X, input.Position.Y)
+        local delta = currentMousePos - initialMousePos
+        
+        -- Adjust size based on delta, scaling it down to feel right
+        local newSize = initialSize + Vector3.new(delta.X * 0.05, -delta.Y * 0.05, 0)
+        
+        -- Clamp the size within min/max limits
+        newSize = Vector3.new(
+            math.clamp(newSize.X, minSize.X, maxSize.X),
+            math.clamp(newSize.Y, minSize.Y, maxSize.Y),
+            Part.Size.Z
+        )
+        Part.Size = newSize
+    end
+end)
+HandleEvent(UIS.InputEnded, function(input)
+    if isResizing and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        isResizing = false
+        -- Re-enable UI hiding
+        Config["FrameCooldown"] = false
+    end
+end)
+-- [[ FEATURE END: Fullscreen and Resizer Logic ]]
+
 do -- Breathing
 	
 	local X, Y, Z = .1, .1, .1
@@ -2447,6 +2583,7 @@ do -- Breathing
 	WrapFunction(function()
 		Loop(function()
 			if not Config.Breathing and started==PartIncreased then return; end
+            if isFullScreen then return end -- Don't breathe in fullscreen
 			TS:Create(Part, TweenInfo.new(waitTime), { Size = Part.Size + (PartIncreased and Vector3.new(-X, -Y, -Z) or Vector3.new(X, Y, Z)) }):Play()
 			task.wait(waitTime)
 			PartIncreased = not PartIncreased
