@@ -79,8 +79,8 @@ do
 			BorderSizePixel = 1,
 			Parent = screen,
 			Position = UDim2.new(0.5, 0, 0.5, 0),
-			-- CORRECTED SIZE: Width changed from 516 to 380 for mobile
-			Size = UDim2.new(0, 516, 0, 380),
+			-- 恢复原始宽度(X)，缩短高度(Y)
+			Size = UDim2.new(0, 516, 0, 450),
             Visible = false 
 		}})
 
@@ -879,7 +879,7 @@ local misc = window:Page({Name = "misc"})
 local config = window:Page({Name = "config"})
 local skins = window:Page({Name = "skins"})
 --
-local aimbot_section = aimbot:Section({Name = "players", size = 300})
+local aimbot_section = aimbot:Section({Name = "players", size = 200})
 local aimbot_section2 = aimbot:Section({Name = "colored models", Side = "Right"})
 --
 local label = aimbot_section:Label({Name = "label hello random"})
