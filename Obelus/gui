@@ -59,6 +59,8 @@ do
 		-- // Variables
 		local info = windowInfo or {}
 		local window = {Pages = {}, Dragging = false, Delta = UDim2.new(), Delta2 = Vector3.new()}
+        local toggleDragging, toggleDelta, toggleDelta2 = false, UDim2.new(), Vector3.new()
+        local isPotentialClick = false
 		-- // Utilisation
 		local screen = utility:Create({Type = "ScreenGui", Properties = {
 			Parent = cre,
@@ -78,7 +80,7 @@ do
 			Parent = screen,
 			Position = UDim2.new(0.5, 0, 0.5, 0),
 			Size = UDim2.new(0, 516, 0, 563),
-            Visible = false -- UI默认隐藏
+            Visible = false 
 		}})
 
         local toggleButton = utility:Create({Type = "TextButton", Properties = {
@@ -95,8 +97,19 @@ do
         }})
         
         toggleButton.MouseButton1Click:Connect(function()
-            main.Visible = not main.Visible
+            if isPotentialClick then
+                main.Visible = not main.Visible
+            end
         end)
+
+		utility:Connection({Type = toggleButton.InputBegan, Callback = function(Input)
+            if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
+                toggleDragging = true
+                isPotentialClick = true
+                toggleDelta = toggleButton.Position
+                toggleDelta2 = Input.Position
+            end
+        end})
 		
 		--
 		local frame = utility:Create({Type = "Frame", Properties = {
@@ -201,27 +214,40 @@ do
 			Parent = pagesFrame
 		}})
 		-- // Functions / Connections
-		local connection = utility:Connection({Type = draggingButton.InputBegan, Callback = function(Input)
-			if not window.Dragging and Input.UserInputType == Enum.UserInputType.MouseButton1 then
+		utility:Connection({Type = draggingButton.InputBegan, Callback = function(Input)
+			if not window.Dragging and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
 				window.Dragging = true
 				window.Delta = main.Position
 				window.Delta2 = Input.Position
 			end
 		end})
 		--
-		local connection2 = utility:Connection({Type = uis.InputEnded, Callback = function(Input)
-			if window.Dragging and Input.UserInputType == Enum.UserInputType.MouseButton1 then
-				window.Dragging = false
-				window.Delta = UDim2.new()
-				window.Delta2 = Vector3.new()
+		utility:Connection({Type = uis.InputEnded, Callback = function(Input)
+			if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
+                if window.Dragging then
+                    window.Dragging = false
+                    window.Delta = UDim2.new()
+                    window.Delta2 = Vector3.new()
+                end
+                if toggleDragging then
+                    toggleDragging = false
+                    toggleDelta = UDim2.new()
+                    toggleDelta2 = Vector3.new()
+                end
 			end
 		end})
 		--
-		local connection3 = utility:Connection({Type = uis.InputChanged, Callback = function(Input)
-			if window.Dragging then
-				local Delta = Input.Position - window.Delta2
-				main.Position = UDim2.new(window.Delta.X.Scale, window.Delta.X.Offset + Delta.X, window.Delta.Y.Scale, window.Delta.Y.Offset + Delta.Y)
-			end
+		utility:Connection({Type = uis.InputChanged, Callback = function(Input)
+			if (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
+                if window.Dragging then
+                    local Delta = Input.Position - window.Delta2
+                    main.Position = UDim2.new(window.Delta.X.Scale, window.Delta.X.Offset + Delta.X, window.Delta.Y.Scale, window.Delta.Y.Offset + Delta.Y)
+                elseif toggleDragging then
+                    isPotentialClick = false 
+                    local Delta = Input.Position - toggleDelta2
+                    toggleButton.Position = UDim2.new(toggleDelta.X.Scale, toggleDelta.X.Offset + Delta.X, toggleDelta.Y.Scale, toggleDelta.Y.Offset + Delta.Y)
+                end
+            end
 		end})
 		-- // Nested Functions
 		function window:RefreshTabs()
