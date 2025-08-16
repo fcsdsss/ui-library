@@ -69,7 +69,19 @@ do
 			ResetOnSpawn = false
 		}})
 
-        local mobileToggleButton = utility:Create({Type = "TextButton", Properties = {
+		local main = utility:Create({Type = "Frame", Properties = {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromRGB(51, 51, 51),
+			BorderColor3 = Color3.fromRGB(0, 0, 0),
+			BorderMode = "Inset",
+			BorderSizePixel = 1,
+			Parent = screen,
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Size = UDim2.new(0, 516, 0, 563),
+            Visible = false -- UI默认隐藏
+		}})
+
+        local toggleButton = utility:Create({Type = "TextButton", Properties = {
             Parent = screen,
             Size = UDim2.new(0, 80, 0, 30),
             Position = UDim2.new(0, 10, 0, 10),
@@ -81,27 +93,8 @@ do
             TextSize = 14,
             ZIndex = 9999
         }})
-
-		--
-		local main = utility:Create({Type = "Frame", Properties = {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = Color3.fromRGB(51, 51, 51),
-			BorderColor3 = Color3.fromRGB(0, 0, 0),
-			BorderMode = "Inset",
-			BorderSizePixel = 1,
-			Parent = screen,
-			Position = UDim2.new(0.5, 0, 0.5, 0),
-			Size = UDim2.new(0.9, 0, 0.65, 0),
-            Visible = false
-		}})
-
-        utility:Create({Type = "UIAspectRatioConstraint", Properties = {
-            Parent = main,
-            AspectRatio = 516 / 563,
-            DominantAxis = "Width"
-        }})
-
-        mobileToggleButton.MouseButton1Click:Connect(function()
+        
+        toggleButton.MouseButton1Click:Connect(function()
             main.Visible = not main.Visible
         end)
 		
@@ -209,7 +202,7 @@ do
 		}})
 		-- // Functions / Connections
 		local connection = utility:Connection({Type = draggingButton.InputBegan, Callback = function(Input)
-			if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not window.Dragging then
+			if not window.Dragging and Input.UserInputType == Enum.UserInputType.MouseButton1 then
 				window.Dragging = true
 				window.Delta = main.Position
 				window.Delta2 = Input.Position
@@ -217,7 +210,7 @@ do
 		end})
 		--
 		local connection2 = utility:Connection({Type = uis.InputEnded, Callback = function(Input)
-			if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and window.Dragging then
+			if window.Dragging and Input.UserInputType == Enum.UserInputType.MouseButton1 then
 				window.Dragging = false
 				window.Delta = UDim2.new()
 				window.Delta2 = Vector3.new()
@@ -225,7 +218,7 @@ do
 		end})
 		--
 		local connection3 = utility:Connection({Type = uis.InputChanged, Callback = function(Input)
-			if (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) and window.Dragging then
+			if window.Dragging then
 				local Delta = Input.Position - window.Delta2
 				main.Position = UDim2.new(window.Delta.X.Scale, window.Delta.X.Offset + Delta.X, window.Delta.Y.Scale, window.Delta.Y.Offset + Delta.Y)
 			end
@@ -471,7 +464,7 @@ do
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 20)
+						Size = UDim2.new(1, 0, 0, 14)
 					}})
 					--
 					local labelTitle = utility:Create({Type = "TextLabel", Properties = {
@@ -515,7 +508,7 @@ do
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 24)
+						Size = UDim2.new(1, 0, 0, 14)
 					}})
 					--
 					local toggleButton = utility:Create({Type = "TextButton", Properties = {
@@ -528,12 +521,12 @@ do
 					}})
 					--
 					local toggleTitle = utility:Create({Type = "TextLabel", Properties = {
-						AnchorPoint = Vector2.new(0, 0.5),
+						AnchorPoint = Vector2.new(0, 0),
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = contentHolder,
 						Size = UDim2.new(1, -36, 1, 0),
-						Position = UDim2.new(0, 36, 0.5, 0),
+						Position = UDim2.new(0, 36, 0, 0),
 						Font = "Code",
 						RichText = true,
 						Text = info.Name or info.name or info.Text or info.text or "new toggle",
@@ -547,8 +540,8 @@ do
 						BackgroundColor3 = Color3.fromRGB(1, 1, 1),
 						BorderSizePixel = 0,
 						Parent = contentHolder,
-						Position = UDim2.new(0, 16, 0.5, -6),
-						Size = UDim2.new(0, 12, 0, 12)
+						Position = UDim2.new(0, 16, 0, 2),
+						Size = UDim2.new(0, 10, 0, 10)
 					}})
 					--
 					local toggleInlineGradient = utility:Create({Type = "Frame", Properties = {
@@ -607,7 +600,7 @@ do
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 28)
+						Size = UDim2.new(1, 0, 0, 20)
 					}})
 					--
 					local buttonButton = utility:Create({Type = "TextButton", Properties = {
@@ -689,7 +682,7 @@ do
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, (info.Name or info.name or info.Text or info.text) and 32 or 16)
+						Size = UDim2.new(1, 0, 0, (info.Name or info.name or info.Text or info.text) and 24 or 10)
 					}})
 					--
 					local sliderButton = utility:Create({Type = "TextButton", Properties = {
@@ -707,7 +700,7 @@ do
 							BackgroundTransparency = 1,
 							BorderSizePixel = 0,
 							Parent = contentHolder,
-							Size = UDim2.new(1, -16, 0, 18),
+							Size = UDim2.new(1, -16, 0, 14),
 							Position = UDim2.new(0, 16, 0, 0),
 							Font = "Code",
 							RichText = true,
@@ -723,8 +716,8 @@ do
 						BackgroundColor3 = Color3.fromRGB(1, 1, 1),
 						BorderSizePixel = 0,
 						Parent = contentHolder,
-						Position = UDim2.new(0, 16, 0, (info.Name or info.name or info.Text or info.text) and 18 or 0),
-						Size = UDim2.new(1, -32, 0, 12)
+						Position = UDim2.new(0, 16, 0, (info.Name or info.name or info.Text or info.text) and 14 or 0),
+						Size = UDim2.new(1, -32, 0, 10)
 					}})
 					--
 					local sliderInlineGradient = utility:Create({Type = "Frame", Properties = {
