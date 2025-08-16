@@ -79,8 +79,7 @@ do
 			BorderSizePixel = 1,
 			Parent = screen,
 			Position = UDim2.new(0.5, 0, 0.5, 0),
-			-- 恢复原始宽度(X)，缩短高度(Y)
-			Size = UDim2.new(0, 516, 0, 450),
+			Size = UDim2.new(0, 516, 0, 390),
             Visible = false 
 		}})
 
