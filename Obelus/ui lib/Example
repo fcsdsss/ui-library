@@ -1,11 +1,4 @@
--- 这种方法的好处是，任何使用此脚本的人都能自动获取您在 GitHub 上的最新版本。
-local Library
-local success, result = pcall(function()
-    -- 使用 HttpGet 获取链接中的原始代码，然后用 loadstring 执行它来返回库
-	local libraryScript = game:GetService("HttpService"):GetAsync("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/Obelus/ui%20lib/source.lua")
-	Library = loadstring(libraryScript)()
-end)
-
+loadstring(game:HttpGet("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/Obelus/ui%20lib/source.lua"))()
 -- 如果加载失败，则在输出窗口打印错误并停止脚本
 if not success or not Library then
 	warn("Obelus UI 库加载失败！错误信息:", result)
