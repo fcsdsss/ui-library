@@ -368,37 +368,68 @@ do
 					local info = dropdownInfo or {}
 					local options = info.Options or {}
 					local dropdown = { state = info.Default or options[1], callback = info.Callback or function() end, open = false }
-					local contentHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionContentHolder, Size = UDim2.new(1, 0, 0, 20), LayoutOrder = info.Order or 0, ZIndex = 5 }})
+					
+					-- 1. 创建在分区中可见的主按钮部分
+					local contentHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionContentHolder, Size = UDim2.new(1, 0, 0, 20), LayoutOrder = info.Order or 0 }})
 					utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(0.5, -20, 1, 0), Position = UDim2.new(0, 16, 0, 0), Font = "Code", RichText = true, Text = info.Name or "Dropdown", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
 					local dropdownButton = utility:Create({Type = "TextButton", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.5, -16, 1, 0), Text = "" }})
-					local dropdownFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(45, 45, 45), BorderColor3 = Color3.fromRGB(1, 1, 1), BorderMode = "Inset", BorderSizePixel = 1, Parent = dropdownButton, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0), ClipsDescendants = false }})
+					local dropdownFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(45, 45, 45), BorderColor3 = Color3.fromRGB(1, 1, 1), BorderMode = "Inset", BorderSizePixel = 1, Parent = dropdownButton, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0) }})
 					local dropdownInline = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderSizePixel = 0, Parent = dropdownFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
 					local dropdownValue = utility:Create({Type = "TextLabel", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = dropdownInline, Size = UDim2.new(1, -10, 1, 0), Position = UDim2.new(0, 5, 0, 0), Font = "Code", RichText = true, Text = dropdown.state or "", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
 					local dropdownArrow = utility:Create({Type = "TextLabel", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = dropdownInline, Size = UDim2.new(0, 10, 1, 0), Position = UDim2.new(1, -10, 0, 0), Font = "Code", Text = "v", TextColor3 = Color3.fromRGB(180, 180, 180), TextSize = 13, TextXAlignment = "Center" }})
-					local optionsHolder = utility:Create({Type = "ScrollingFrame", Properties = { Parent = dropdownFrame, Size = UDim2.new(1, 0, 0, 0), Position = UDim2.new(0, 0, 1, 2), Visible = false, BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderColor3 = Color3.fromRGB(1, 1, 1), BorderSizePixel = 1, ZIndex = 10, AutomaticCanvasSize = "Y", ScrollBarThickness = 3 }})
+
+					-- 2. 创建将要弹出的选项列表 (父级为顶层screen，以避免被裁剪)
+					local optionsHolder = utility:Create({Type = "ScrollingFrame", Properties = {
+						Parent = screen, -- 父级设为顶层screen
+						Size = UDim2.new(0, 0, 0, 0), -- 初始大小为0
+						Position = UDim2.new(0, 0, 0, 0), -- 位置将在打开时动态计算
+						Visible = false,
+						BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+						BorderColor3 = Color3.fromRGB(1, 1, 1),
+						BorderSizePixel = 1,
+						ZIndex = 9999, -- 确保在最顶层
+						AutomaticCanvasSize = "Y",
+						ScrollBarThickness = 3,
+						ScrollBarImageColor3 = Color3.fromRGB(65, 65, 65)
+					}})
 					utility:Create({Type = "UIListLayout", Properties = { Parent = optionsHolder, SortOrder = Enum.SortOrder.LayoutOrder }})
 					
+					-- 动画处理函数
 					local function toggleDropdownAnim(state)
 						dropdown.open = state
-						contentHolder.ZIndex = state and 10 or 5
 						dropdownArrow.Text = state and "^" or "v"
-						local numOptions = #options
-						local height = math.min(numOptions * 20, 80)
-						local animInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
-						local goal = {Size = state and UDim2.new(1, 0, 0, height) or UDim2.new(1, 0, 0, 0)}
-						if state then optionsHolder.Visible = true end
-						local tween = ts:Create(optionsHolder, animInfo, goal)
-						tween.Completed:Connect(function() if not state then optionsHolder.Visible = false end end)
-						tween:Play()
+						
+						if state then -- 打开
+							-- 计算位置和大小
+							local buttonAbsPos = dropdownButton.AbsolutePosition
+							local buttonAbsSize = dropdownButton.AbsoluteSize
+							optionsHolder.Size = UDim2.fromOffset(buttonAbsSize.X, 0)
+							optionsHolder.Position = UDim2.fromOffset(buttonAbsPos.X, buttonAbsPos.Y + buttonAbsSize.Y + 2)
+							
+							optionsHolder.Visible = true
+							local numOptions = #options
+							local targetHeight = math.min(numOptions * 20, 80) -- 最大高度为80
+							local animInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
+							local tween = ts:Create(optionsHolder, animInfo, {Size = UDim2.fromOffset(buttonAbsSize.X, targetHeight)})
+							tween:Play()
+						else -- 关闭
+							local animInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
+							local tween = ts:Create(optionsHolder, animInfo, {Size = UDim2.fromOffset(optionsHolder.AbsoluteSize.X, 0)})
+							tween.Completed:Connect(function()
+								optionsHolder.Visible = false
+							end)
+							tween:Play()
+						end
 					end
-
+					
+					-- 填充选项
 					for i, optionName in ipairs(options) do
 						local optionButton = utility:Create({Type = "TextButton", Properties = { Parent = optionsHolder, Size = UDim2.new(1, 0, 0, 20), Text = "", BackgroundColor3 = Color3.fromRGB(25, 25, 25), LayoutOrder = i }})
 						utility:Create({Type = "TextLabel", Properties = { Parent = optionButton, Size = UDim2.new(1, -10, 1, 0), Position = UDim2.new(0, 5, 0, 0), Font = "Code", Text = optionName, TextColor3 = Color3.fromRGB(180, 180, 180), TextSize = 13, TextXAlignment = "Left", BackgroundTransparency = 1 }})
+						
 						utility:Connection({Type = optionButton.MouseEnter, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45) end})
 						utility:Connection({Type = optionButton.MouseLeave, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25) end})
 						
-						-- [CRITICAL FIX] Using InputBegan to reliably capture both Touch and Mouse clicks inside a ScrollingFrame.
 						utility:Connection({Type = optionButton.InputBegan, Callback = function(input)
 							if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 								dropdown:Set(optionName, true)
@@ -407,23 +438,15 @@ do
 						end})
 					end
 					
+					-- 定义公共方法
 					function dropdown:Close() if not dropdown.open then return end; toggleDropdownAnim(false); window.activeDropdown = nil end
 					function dropdown:Open() if dropdown.open then return end; if window.activeDropdown then window.activeDropdown:Close() end; window.activeDropdown = dropdown; toggleDropdownAnim(true) end
 					
-					-- [REFACTORED] 将 MouseButton1Click 替换为 InputBegan 以支持移动端触摸
-					utility:Connection({
-						Type = dropdownButton.InputBegan,
-						Callback = function(input)
-							-- 确保输入是鼠标左键或触摸
-							if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-								if dropdown.open then
-									dropdown:Close()
-								else
-									dropdown:Open()
-								end
-							end
+					utility:Connection({Type = dropdownButton.InputBegan, Callback = function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+							if dropdown.open then dropdown:Close() else dropdown:Open() end
 						end
-					})
+					end})
 					
 					function dropdown:Get() return dropdown.state end
 					function dropdown:Set(value, runCallback)
@@ -433,11 +456,17 @@ do
 							if runCallback then dropdown.callback(dropdown.state) end
 						end
 					end
-					function dropdown:Remove() contentHolder:Remove(); dropdown = nil end
-					dropdown.frame = dropdownButton
+					function dropdown:Remove()
+						contentHolder:Destroy()
+						optionsHolder:Destroy() -- 移除时也要销毁浮动列表
+						dropdown = nil
+					end
+
+					-- 这一行对于“点击外部关闭”的逻辑至关重要
+					dropdown.frame = optionsHolder 
 					return dropdown
 				end
-				
+
 				return section
 			end
 			
