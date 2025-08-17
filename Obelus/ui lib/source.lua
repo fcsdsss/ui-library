@@ -11,7 +11,7 @@ local cre = game:GetService("CoreGui")
 -- // Indexing
 library.__index = library
 
--- // [NEW] Notification Queue
+-- // Notification Queue
 local notificationQueue = {}
 local isNotifying = false
 local notificationGui
@@ -20,41 +20,33 @@ local notificationGui
 do
 	function utility:Create(createInfo)
 		local createInfo = createInfo or {}
-		--
 		if createInfo.Type then
 			local instance = Instance.new(createInfo.Type)
-			--
 			if createInfo.Properties and typeof(createInfo.Properties) == "table" then
 				for property, value in pairs(createInfo.Properties) do
 					instance[property] = value
 				end
 			end
-			--
 			return instance
 		end
 	end
-	--
+	
 	function utility:Connection(connectionInfo)
 		local connectionInfo = connectionInfo or {}
-		--
 		if connectionInfo.Type then
 			local connection = connectionInfo.Type:Connect(connectionInfo.Callback or function() end)
-			--
+			-- [FIXED] Correctly add connection to the table for proper cleanup
 			table.insert(obelus.connections, connection)
-			--
 			return connection
 		end
 	end
-	--
+	
 	function utility:RemoveConnection(connectionInfo)
 		local connectionInfo = connectionInfo or {}
-		--
 		if connectionInfo.Connection then
 			local found = table.find(obelus.connections, connectionInfo.Connection)
-			--
 			if found then
 				connectionInfo.Connection:Disconnect()
-				--
 				table.remove(obelus.connections, found)
 			end
 		end
@@ -65,11 +57,10 @@ do
 	function library:Window(windowInfo)
 		-- // Variables
 		local info = windowInfo or {}
-		local window = {Pages = {}, Dragging = false, Delta = UDim2.new(), Delta2 = Vector3.new()}
+		local window = {Pages = {}, Dragging = false, Delta = UDim2.new(), Delta2 = Vector3.new(), activeDropdown = nil}
         local toggleDragging, toggleDelta, toggleDelta2 = false, UDim2.new(), Vector3.new()
         local isPotentialClick = false
 		
-		-- // [NEW] Animation State
 		local isWindowOpen = false
 		local isWindowAnimating = false
 
@@ -109,30 +100,23 @@ do
             ZIndex = 9999
         }})
 		
-		-- // [NEW] Open/Close Animation Logic
 		toggleButton.MouseButton1Click:Connect(function()
             if isPotentialClick and not isWindowAnimating then
 				isWindowAnimating = true
 				isWindowOpen = not isWindowOpen
-
 				local openSize = UDim2.new(0, 516, 0, 390)
 				local closedSize = UDim2.new(0, 516, 0, 0)
-				
 				local animInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 				local goal = {}
-
 				if isWindowOpen then
 					goal.Size = openSize
 					main.Visible = true
 				else
 					goal.Size = closedSize
 				end
-				
 				local tween = ts:Create(main, animInfo, goal)
 				tween.Completed:Connect(function()
-					if not isWindowOpen then
-						main.Visible = false
-					end
+					if not isWindowOpen then main.Visible = false end
 					isWindowAnimating = false
 				end)
 				tween:Play()
@@ -148,7 +132,6 @@ do
             end
         end})
 		
-		--
 		local frame = utility:Create({Type = "Frame", Properties = {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundColor3 = Color3.fromRGB(12, 12, 12),
@@ -158,7 +141,6 @@ do
 			Size = UDim2.new(1, -2, 1, -2),
 		}})
 
-		--
 		local draggingButton = utility:Create({Type = "TextButton", Properties = {
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
@@ -167,7 +149,7 @@ do
 			Size = UDim2.new(1, 0, 0, 24),
 			Text = ""
 		}})
-		--
+		
 		local title = utility:Create({Type = "TextLabel", Properties = {
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
@@ -182,7 +164,7 @@ do
 			TextSize = 13,
 			TextXAlignment = "Left"
 		}})
-		--
+		
 		local accent = utility:Create({Type = "Frame", Properties = {
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
@@ -190,67 +172,18 @@ do
 			Position = UDim2.new(0, 8, 0, 22),
 			Size = UDim2.new(1, -16, 0, 2)
 		}})
-		--
-		local accentFirst = utility:Create({Type = "Frame", Properties = {
-			BackgroundColor3 = Color3.fromRGB(170, 85, 235),
-			BorderSizePixel = 0,
-			Parent = accent,
-			Position = UDim2.new(0, 0, 0, 0),
-			Size = UDim2.new(1, 0, 0, 1)
-		}})
-		--
-		local accentSecond = utility:Create({Type = "Frame", Properties = {
-			BackgroundColor3 = Color3.fromRGB(101, 51, 141),
-			BorderSizePixel = 0,
-			Parent = accent,
-			Position = UDim2.new(0, 0, 0, 1),
-			Size = UDim2.new(1, 0, 0, 1)
-		}})
-		--
-		local tabs = utility:Create({Type = "Frame", Properties = {
-			BackgroundColor3 = Color3.fromRGB(1, 1, 1),
-			BorderSizePixel = 0,
-			Parent = frame,
-			Position = UDim2.new(0, 8, 0, 29),
-			Size = UDim2.new(1, -16, 0, 30)
-		}})
-		--
-		local tabsInline = utility:Create({Type = "Frame", Properties = {
-			BackgroundColor3 = Color3.fromRGB(1, 1, 1),
-			BorderSizePixel = 0,
-			Parent = tabs,
-			Position = UDim2.new(0, 0, 0, 0),
-			Size = UDim2.new(1, -1, 1, 0)
-		}})
-		--
-		utility:Create({Type = "UIListLayout", Properties = {
-			Padding = UDim.new(0, 0),
-			Parent = tabsInline,
-			FillDirection = "Horizontal"
-		}})
-		--
-		local pagesHolder = utility:Create({Type = "Frame", Properties = {
-			BackgroundColor3 = Color3.fromRGB(51, 51, 51),
-			BorderColor3 = Color3.fromRGB(0, 0, 0),
-			BorderMode = "Inset",
-			BorderSizePixel = 1,
-			Parent = frame,
-			Position = UDim2.new(0, 8, 0, 65),
-			Size = UDim2.new(1, -16, 1, -76)
-		}})
-		--
-		local pagesFrame = utility:Create({Type = "Frame", Properties = {
-			BackgroundColor3 = Color3.fromRGB(13, 13, 13),
-			BorderSizePixel = 0,
-			Parent = pagesHolder,
-			Position = UDim2.new(0, 1, 0, 1),
-			Size = UDim2.new(1, -2, 1, -2)
-		}})
-		--
-		local pagesFolder = utility:Create({Type = "Folder", Properties = {
-			Parent = pagesFrame
-		}})
-		-- // Functions / Connections
+		
+		utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(170, 85, 235), BorderSizePixel = 0, Parent = accent, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 0, 1) }})
+		utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(101, 51, 141), BorderSizePixel = 0, Parent = accent, Position = UDim2.new(0, 0, 0, 1), Size = UDim2.new(1, 0, 0, 1) }})
+		
+		local tabs = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(1, 1, 1), BorderSizePixel = 0, Parent = frame, Position = UDim2.new(0, 8, 0, 29), Size = UDim2.new(1, -16, 0, 30) }})
+		local tabsInline = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(1, 1, 1), BorderSizePixel = 0, Parent = tabs, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, -1, 1, 0) }})
+		utility:Create({Type = "UIListLayout", Properties = { Padding = UDim.new(0, 0), Parent = tabsInline, FillDirection = "Horizontal" }})
+		
+		local pagesHolder = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(51, 51, 51), BorderColor3 = Color3.fromRGB(0, 0, 0), BorderMode = "Inset", BorderSizePixel = 1, Parent = frame, Position = UDim2.new(0, 8, 0, 65), Size = UDim2.new(1, -16, 1, -76) }})
+		local pagesFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(13, 13, 13), BorderSizePixel = 0, Parent = pagesHolder, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
+		local pagesFolder = utility:Create({Type = "Folder", Properties = { Parent = pagesFrame }})
+		
 		utility:Connection({Type = draggingButton.InputBegan, Callback = function(Input)
 			if not window.Dragging and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
 				window.Dragging = true
@@ -258,22 +191,14 @@ do
 				window.Delta2 = Input.Position
 			end
 		end})
-		--
+		
 		utility:Connection({Type = uis.InputEnded, Callback = function(Input)
 			if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
-                if window.Dragging then
-                    window.Dragging = false
-                    window.Delta = UDim2.new()
-                    window.Delta2 = Vector3.new()
-                end
-                if toggleDragging then
-                    toggleDragging = false
-                    toggleDelta = UDim2.new()
-                    toggleDelta2 = Vector3.new()
-                end
+                if window.Dragging then window.Dragging = false end
+                if toggleDragging then toggleDragging = false end
 			end
 		end})
-		--
+		
 		utility:Connection({Type = uis.InputChanged, Callback = function(Input)
 			if (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
                 if window.Dragging then
@@ -286,913 +211,258 @@ do
                 end
             end
 		end})
-		-- // Nested Functions
+
+		-- Global click handler to close active dropdown
+		utility:Connection({Type = uis.InputBegan, Callback = function(input)
+			if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and window.activeDropdown then
+				if not window.activeDropdown.frame:IsAncestorOf(input.GuiObject) then
+					window.activeDropdown:Close()
+				end
+			end
+		end})
+
 		function window:RefreshTabs()
 			for index, page in pairs(window.Pages) do
 				page.Tab.Size = UDim2.new(1 / (#window.Pages), 0, 1, 0)
 			end
 		end
-		--
+		
 		function window:Page(pageInfo)
-			-- // Variables
 			local info = pageInfo or {}
 			local page = {Open = false}
-			-- // Utilisation
-			local tab = utility:Create({Type = "Frame", Properties = {
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Parent = tabsInline,
-				Size = UDim2.new(1, 0, 1, 0)
-			}})
-			--
-			local tabButton = utility:Create({Type = "TextButton", Properties = {
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Parent = tab,
-				Position = UDim2.new(0, 0, 0, 0),
-				Size = UDim2.new(1, 0, 1, 0)
-			}})
-			--
-			local tabInline = utility:Create({Type = "Frame", Properties = {
-				BackgroundColor3 = Color3.fromRGB(41, 41, 41),
-				BorderSizePixel = 0,
-				Parent = tab,
-				Position = UDim2.new(0, 1, 0, 1),
-				Size = UDim2.new(1, -1, 1, -2)
-			}})
-			--
-			local tabInlineGradient = utility:Create({Type = "Frame", Properties = {
-				BackgroundColor3 = Color3.fromRGB(41, 41, 41),
-				BorderSizePixel = 0,
-				Parent = tabInline,
-				Position = UDim2.new(0, 1, 0, 1),
-				Size = UDim2.new(1, -2, 1, -2)
-			}})
-			--
-			local tabGradient = utility:Create({Type = "UIGradient", Properties = {
-				Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 100))}),
-				Rotation = 90,
-				Parent = tabInlineGradient
-			}})
-			--
-			local tabTitle = utility:Create({Type = "TextLabel", Properties = {
-				AnchorPoint = Vector2.new(0, 0.5),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Parent = tabInlineGradient,
-				Position = UDim2.new(0, 4, 0.5, 0),
-				Size = UDim2.new(1, -8, 0, 15),
-				Font = "Code",
-				RichText = true,
-				Text = info.Name or info.name or "tab",
-				TextColor3 = Color3.fromRGB(142, 142, 142),
-				TextStrokeTransparency = 0.5,
-				TextSize = 13,
-				TextXAlignment = "Center"
-			}})
-			--
-			local pageHolder = utility:Create({Type = "Frame", Properties = {
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Parent = pagesFolder,
-				Position = UDim2.new(0, 10, 0, 10),
-				Size = UDim2.new(1, -20, 1, -20),
-				Visible = false
-			}})
-			--
-			local leftHolder = utility:Create({Type = "Frame", Properties = {
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Parent = pageHolder,
-				Position = UDim2.new(0, 0, 0 ,0),
-				Size = UDim2.new(0.5, -5, 1, 0)
-			}})
-			--
-			local rightHolder = utility:Create({Type = "Frame", Properties = {
-				AnchorPoint = Vector2.new(1, 0),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Parent = pageHolder,
-				Position = UDim2.new(1, 0, 0 ,0),
-				Size = UDim2.new(0.5, -5, 1, 0)
-			}})
-			-- // Functions / Connections
+			
+			local tab = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = tabsInline, Size = UDim2.new(1, 0, 1, 0) }})
+			local tabButton = utility:Create({Type = "TextButton", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = tab, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0) }})
+			local tabInline = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(41, 41, 41), BorderSizePixel = 0, Parent = tab, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -1, 1, -2) }})
+			local tabInlineGradient = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(41, 41, 41), BorderSizePixel = 0, Parent = tabInline, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
+			local tabGradient = utility:Create({Type = "UIGradient", Properties = { Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 100))}), Rotation = 90, Parent = tabInlineGradient }})
+			local tabTitle = utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = tabInlineGradient, Position = UDim2.new(0, 4, 0.5, 0), Size = UDim2.new(1, -8, 0, 15), Font = "Code", RichText = true, Text = info.Name or info.name or "tab", TextColor3 = Color3.fromRGB(142, 142, 142), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Center" }})
+			local pageHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = pagesFolder, Position = UDim2.new(0, 10, 0, 10), Size = UDim2.new(1, -20, 1, -20), Visible = false }})
+			local leftHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = pageHolder, Position = UDim2.new(0, 0, 0 ,0), Size = UDim2.new(0.5, -5, 1, 0) }})
+			local rightHolder = utility:Create({Type = "Frame", Properties = { AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = pageHolder, Position = UDim2.new(1, 0, 0 ,0), Size = UDim2.new(0.5, -5, 1, 0) }})
+			
 			utility:Connection({Type = tabButton.MouseButton1Down, Callback = function()
 				if not page.Open then
 					for index, other_page in pairs(window.Pages) do
-						if other_page ~= page then
-							other_page:Turn(false)
-						end
+						if other_page ~= page then other_page:Turn(false) end
 					end
 				end
-				--
 				page:Turn(true)
 			end})
-			-- // Nested Functions
+			
 			function page:Turn(state)
 				tabTitle.TextColor3 = state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(142, 142, 142)
 				tabGradient.Color = state and ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(155, 155, 155))}) or ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 100))})
-				--
 				page.PageHolder.Visible = state
 				page.Open = state
 			end
-			--
+			
 			function page:Section(sectionInfo)
-				-- // Variables
 				local info = sectionInfo or {}
 				local section = {}
-				-- // Utilisation
-				local sectionMain = utility:Create({Type = "Frame", Properties = {
-					BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-					BorderColor3 = Color3.fromRGB(13, 13, 13),
-					BorderMode = "Inset",
-					BorderSizePixel = 1,
-					Parent = page[((info.Side and info.Side:lower() == "right") or (info.side and info.side:lower() == "right")) and "Right" or "Left"],
-					Position = UDim2.new(0, 0, 0, 0),
-					Size = UDim2.new(1, 0, 0, (info.Size or info.size or 200) + 4)
-				}})
-				--
-				local sectionFrame = utility:Create({Type = "Frame", Properties = {
-					BackgroundColor3 = Color3.fromRGB(19, 19, 19),
-					BorderSizePixel = 0,
-					Parent = sectionMain,
-					Position = UDim2.new(0, 1, 0, 1),
-					Size = UDim2.new(1, -2, 1, -2)
-				}})
-				--
-				local sectionTitle = utility:Create({Type = "TextLabel", Properties = {
-					AnchorPoint = Vector2.new(0, 0.5),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Parent = sectionMain,
-					Position = UDim2.new(0, 13, 0, 0),
-					Size = UDim2.new(1, -26, 0, 15),
-					Font = "Code",
-					RichText = true,
-					Text = info.Name or info.name or "new section",
-					TextColor3 = Color3.fromRGB(205, 205, 205),
-					TextStrokeTransparency = 0.5,
-					TextSize = 13,
-					TextXAlignment = "Left",
-					ZIndex = 2
-				}})
-				--
-				local sectionTitleLine = utility:Create({Type = "Frame", Properties = {
-					BackgroundColor3 = Color3.fromRGB(19, 19, 19),
-					BorderSizePixel = 0,
-					Parent = sectionMain,
-					Position = UDim2.new(0, 9, 0, 0),
-					Size = UDim2.new(0, sectionTitle.TextBounds.X + 6, 0, 1)
-				}})
-				--
-				local sectionScrolling = utility:Create({Type = "Frame", Properties = {
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Parent = sectionMain,
-					Position = UDim2.new(0, 1, 0, 1),
-					Size = UDim2.new(1, -2, 1, -2),
-					Visible = false
-				}})
-				--
-				local sectionScrollingBar = utility:Create({Type = "Frame", Properties = {
-					AnchorPoint = Vector2.new(1, 0),
-					BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-					BorderSizePixel = 0,
-					Parent = sectionScrolling,
-					Position = UDim2.new(1, 0, 0, 0),
-					Size = UDim2.new(0, 5, 1, 0),
-					ZIndex = 3
-				}})
-				--
-				local sectionScrollingGradient = utility:Create({Type = "ImageLabel", Properties = {
-					AnchorPoint = Vector2.new(0, 1),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Parent = sectionScrolling,
-					Position = UDim2.new(0, 0, 1, 0),
-					Size = UDim2.new(1, 0, 0, 20),
-					ZIndex = 2,
-					Image = "rbxassetid://7783533907",
-					ImageTransparency = 0,
-					ImageColor3 = Color3.fromRGB(19, 19, 19),
-					ScaleType = "Stretch"
-				}})
-				--
-				local sectionContentHolder = utility:Create({Type = "ScrollingFrame", Properties = {
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Parent = sectionFrame,
-					Position = UDim2.new(0, 0, 0, 0),
-					Size = UDim2.new(1, 0, 1, 0),
-					ZIndex = 4,
-					AutomaticCanvasSize = "Y",
-					BottomImage = "rbxassetid://7783554086",
-					CanvasSize = UDim2.new(0, 0, 0, 0),
-					MidImage = "rbxassetid://7783554086",
-					ScrollBarImageColor3 = Color3.fromRGB(65, 65, 65),
-					ScrollBarThickness = 4,
-					TopImage = "rbxassetid://7783554086",
-					VerticalScrollBarInset = "ScrollBar"
-				}})
-				--
-				utility:Create({Type = "UIPadding", Properties = {
-					PaddingTop = UDim.new(0, 10),
-					PaddingBottom = UDim.new(0, 10),
-					Parent = sectionContentHolder
-				}})
-				--
+				
+				local sectionMain = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(45, 45, 45), BorderColor3 = Color3.fromRGB(13, 13, 13), BorderMode = "Inset", BorderSizePixel = 1, Parent = page[((info.Side and info.Side:lower() == "right") or (info.side and info.side:lower() == "right")) and "Right" or "Left"], Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 0, (info.Size or info.size or 200) + 4) }})
+				local sectionFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(19, 19, 19), BorderSizePixel = 0, Parent = sectionMain, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
+				local sectionTitle = utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0, 0.5), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionMain, Position = UDim2.new(0, 13, 0, 0), Size = UDim2.new(1, -26, 0, 15), Font = "Code", RichText = true, Text = info.Name or info.name or "new section", TextColor3 = Color3.fromRGB(205, 205, 205), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left", ZIndex = 2 }})
+				utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(19, 19, 19), BorderSizePixel = 0, Parent = sectionMain, Position = UDim2.new(0, 9, 0, 0), Size = UDim2.new(0, sectionTitle.TextBounds.X + 6, 0, 1) }})
+				
+				local sectionContentHolder = utility:Create({Type = "ScrollingFrame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionFrame, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0), ZIndex = 4, AutomaticCanvasSize = "Y", CanvasSize = UDim2.new(0, 0, 0, 0), ScrollBarImageColor3 = Color3.fromRGB(65, 65, 65), ScrollBarThickness = 4, BorderMode = "Inset" }})
+				utility:Create({Type = "UIPadding", Properties = { PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10), Parent = sectionContentHolder }})
+				
+				-- [CRITICAL FIX] Used correct Enum for SortOrder instead of a string
 				utility:Create({Type = "UIListLayout", Properties = {
 					Padding = UDim.new(0, 5),
 					Parent = sectionContentHolder,
 					FillDirection = "Vertical",
-					SortOrder = "LayoutOrder"
+					SortOrder = Enum.SortOrder.LayoutOrder
 				}})
-				--
-				-- // Functions / Connections
-				-- // Nested Functions
-				function section:Update()
-					if sectionContentHolder.AbsoluteCanvasSize.Y > ((info.Size or info.size or 200) + 4) then
-						sectionScrolling.Visible = true
-					else
-						sectionScrolling.Visible = false
-					end
-				end
-				--
+				
 				function section:Label(labelInfo)
-					-- // Variables
 					local info = labelInfo or {}
 					local label = {}
-					-- // Utilisation
-					local contentHolder = utility:Create({Type = "Frame", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 14),
-						LayoutOrder = info.Order or 0
-					}})
-					--
-					local labelTitle = utility:Create({Type = "TextLabel", Properties = {
-						AnchorPoint = Vector2.new(0, 0),
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Size = UDim2.new(1, -(info.Offset or 36), 1, 0),
-						Position = UDim2.new(0, info.Offset or 36, 0, 0),
-						Font = "Code",
-						RichText = true,
-						Text = info.Name or info.name or info.Text or info.text or "new label",
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextStrokeTransparency = 0.5,
-						TextSize = 13,
-						TextXAlignment = "Left"
-					}})
-					-- // Functions / Connections
-					-- // Nested Functions
-					function label:Remove()
-						contentHolder:Remove()
-						label = nil
-						--
-						section:Update()
-					end
-					-- // Returning + Other
-					section:Update()
-					--
+					local contentHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionContentHolder, Size = UDim2.new(1, 0, 0, 14), LayoutOrder = info.Order or 0 }})
+					utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(1, -(info.Offset or 36), 1, 0), Position = UDim2.new(0, info.Offset or 36, 0, 0), Font = "Code", RichText = true, Text = info.Name or info.name or info.Text or info.text or "new label", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
+					function label:Remove() contentHolder:Remove(); label = nil end
 					return label
 				end
-				--
+				
 				function section:Toggle(toggleInfo)
-					-- // Variables
 					local info = toggleInfo or {}
-					local toggle = {
-						state = (info.Default or info.default or info.Def or info.def or false),
-						callback = (info.Callback or info.callback or function() end)
-					}
-					-- // Utilisation
-					local contentHolder = utility:Create({Type = "Frame", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 14),
-						LayoutOrder = info.Order or 0
-					}})
-					--
-					local toggleButton = utility:Create({Type = "TextButton", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Position = UDim2.new(0, 0, 0, 0),
-						Size = UDim2.new(1, 0, 1, 0),
-						Text = ""
-					}})
-					--
-					local toggleTitle = utility:Create({Type = "TextLabel", Properties = {
-						AnchorPoint = Vector2.new(0, 0),
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Size = UDim2.new(1, -36, 1, 0),
-						Position = UDim2.new(0, 36, 0, 0),
-						Font = "Code",
-						RichText = true,
-						Text = info.Name or info.name or info.Text or info.text or "new toggle",
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextStrokeTransparency = 0.5,
-						TextSize = 13,
-						TextXAlignment = "Left"
-					}})
-					--
-					local toggleFrame = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = Color3.fromRGB(1, 1, 1),
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Position = UDim2.new(0, 16, 0, 2),
-						Size = UDim2.new(0, 10, 0, 10)
-					}})
-					--
-					local toggleInlineGradient = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = toggle.state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(63, 63, 63),
-						BorderSizePixel = 0,
-						Parent = toggleFrame,
-						Position = UDim2.new(0, 1, 0, 1),
-						Size = UDim2.new(1, -2, 1, -2)
-					}})
-					--
-					local toggleGradient = utility:Create({Type = "UIGradient", Properties = {
-						Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}),
-						Rotation = 90,
-						Parent = toggleInlineGradient
-					}})
-					-- // Functions / Connections
-					local connection = utility:Connection({Type = toggleButton.MouseButton1Down, Callback = function()
-						toggle:Set(not toggle.state, true)
-					end})
-					-- // Nested Functions
-					function toggle:Remove()
-						contentHolder:Remove()
-						toggle = nil
-						--
-						utility:RemoveConnection({Connection = connection})
-						connection = nil
-						--
-						section:Update()
-					end
-					--
-					function toggle:Get()
-						return toggle.state
-					end
-					--
+					local toggle = { state = info.Default or false, callback = info.Callback or function() end }
+					local contentHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionContentHolder, Size = UDim2.new(1, 0, 0, 14), LayoutOrder = info.Order or 0 }})
+					local toggleButton = utility:Create({Type = "TextButton", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0), Text = "" }})
+					utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(1, -36, 1, 0), Position = UDim2.new(0, 36, 0, 0), Font = "Code", RichText = true, Text = info.Name or info.name or "new toggle", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
+					local toggleFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(1, 1, 1), BorderSizePixel = 0, Parent = contentHolder, Position = UDim2.new(0, 16, 0, 2), Size = UDim2.new(0, 10, 0, 10) }})
+					local toggleInlineGradient = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = toggle.state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(63, 63, 63), BorderSizePixel = 0, Parent = toggleFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
+					utility:Create({Type = "UIGradient", Properties = { Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}), Rotation = 90, Parent = toggleInlineGradient }})
+					local connection = utility:Connection({Type = toggleButton.MouseButton1Down, Callback = function() toggle:Set(not toggle.state, true) end})
+					function toggle:Remove() contentHolder:Remove(); utility:RemoveConnection({Connection = connection}); toggle = nil end
+					function toggle:Get() return toggle.state end
 					function toggle:Set(value, runCallback)
 						if typeof(value) == "boolean" then
 							toggle.state = value
 							toggleInlineGradient.BackgroundColor3 = toggle.state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(63, 63, 63)
-							if runCallback then
-								toggle.callback(toggle.state)
-							end
+							if runCallback then toggle.callback(toggle.state) end
 						end
 					end
-					-- // Returning + Other
-					section:Update()
-					--
 					return toggle
 				end
-				--
+				
 				function section:Button(buttonInfo)
-					-- // Variables
 					local info = buttonInfo or {}
-					local button = {
-						callback = (info.Callback or info.callback or function() end)
-					}
-					-- // Utilisation
-					local contentHolder = utility:Create({Type = "Frame", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 20),
-						LayoutOrder = info.Order or 0
-					}})
-					--
-					local buttonButton = utility:Create({Type = "TextButton", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Position = UDim2.new(0, 0, 0, 0),
-						Size = UDim2.new(1, 0, 1, 0),
-						Text = ""
-					}})
-					--
-					local buttonFrame = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-						BorderColor3 = Color3.fromRGB(1, 1, 1),
-						BorderMode = "Inset",
-						BorderSizePixel = 1,
-						Parent = contentHolder,
-						Position = UDim2.new(0, 16, 0, 0),
-						Size = UDim2.new(1, -32, 1, 0)
-					}})
-					--
-					local buttonInline = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-						BorderSizePixel = 0,
-						Parent = buttonFrame,
-						Position = UDim2.new(0, 1, 0, 1),
-						Size = UDim2.new(1, -2, 1, -2)
-					}})
-					--
-					local buttonTitle = utility:Create({Type = "TextLabel", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Size = UDim2.new(1, -32, 1, 0),
-						Position = UDim2.new(0, 16, 0, 0),
-						Font = "Code",
-						RichText = true,
-						Text = info.Name or info.name or info.Text or info.text or "new button",
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextStrokeTransparency = 0.5,
-						TextSize = 13,
-						TextXAlignment = "Center"
-					}})
-					
-					-- // [NEW] Button Click Feedback Animation
-					local originalColor = buttonInline.BackgroundColor3
-					local pressedColor = Color3.new(originalColor.r * 0.8, originalColor.g * 0.8, originalColor.b * 0.8)
-					local animInfo = TweenInfo.new(0.1)
-
-					utility:Connection({Type = buttonButton.InputBegan, Callback = function(input)
-						if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-							ts:Create(buttonInline, animInfo, {BackgroundColor3 = pressedColor}):Play()
-						end
-					end})
-
-					utility:Connection({Type = buttonButton.InputEnded, Callback = function(input)
-						if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-							ts:Create(buttonInline, animInfo, {BackgroundColor3 = originalColor}):Play()
-						end
-					end})
-
-					-- // Functions / Connections
-					local connection = utility:Connection({Type = buttonButton.MouseButton1Down, Callback = function()
-						button.callback()
-					end})
-					-- // Nested Functions
-					function button:Remove()
-						contentHolder:Remove()
-						button = nil
-						--
-						utility:RemoveConnection({Connection = connection})
-						connection = nil
-						--
-						section:Update()
-					end
-					-- // Returning + Other
-					section:Update()
-					--
+					local button = { callback = info.Callback or function() end }
+					local contentHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionContentHolder, Size = UDim2.new(1, 0, 0, 20), LayoutOrder = info.Order or 0 }})
+					local buttonButton = utility:Create({Type = "TextButton", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0), Text = "" }})
+					local buttonFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(45, 45, 45), BorderColor3 = Color3.fromRGB(1, 1, 1), BorderMode = "Inset", BorderSizePixel = 1, Parent = contentHolder, Position = UDim2.new(0, 16, 0, 0), Size = UDim2.new(1, -32, 1, 0) }})
+					local buttonInline = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderSizePixel = 0, Parent = buttonFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
+					utility:Create({Type = "TextLabel", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(1, -32, 1, 0), Position = UDim2.new(0, 16, 0, 0), Font = "Code", RichText = true, Text = info.Name or info.name or "new button", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Center" }})
+					local originalColor = buttonInline.BackgroundColor3; local pressedColor = Color3.new(originalColor.r * 0.8, originalColor.g * 0.8, originalColor.b * 0.8); local animInfo = TweenInfo.new(0.1)
+					utility:Connection({Type = buttonButton.InputBegan, Callback = function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then ts:Create(buttonInline, animInfo, {BackgroundColor3 = pressedColor}):Play() end end})
+					utility:Connection({Type = buttonButton.InputEnded, Callback = function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then ts:Create(buttonInline, animInfo, {BackgroundColor3 = originalColor}):Play() end end})
+					local connection = utility:Connection({Type = buttonButton.MouseButton1Down, Callback = function() button.callback() end})
+					function button:Remove() contentHolder:Remove(); utility:RemoveConnection({Connection = connection}); button = nil end
 					return button
 				end
-				--
+				
 				function section:Slider(sliderInfo)
-					-- // Variables
 					local info = sliderInfo or {}
-					local slider = {
-						state = (info.Default or info.default or info.Def or info.def or 0),
-						min = (info.Minimum or info.minimum or info.Min or info.min or 0),
-						max = (info.Maximum or info.maximum or info.Max or info.max or 10),
-						decimals = (1 / (info.Decimals or info.decimals or info.Tick or info.tick or 0.25)),
-						suffix = (info.Suffix or info.suffix or info.Ending or info.ending or ""),
-						callback = (info.Callback or info.callback or function() end),
-						holding = false
-					}
-					-- // Utilisation
-					local contentHolder = utility:Create({Type = "Frame", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, (info.Name or info.name or info.Text or info.text) and 24 or 10),
-						LayoutOrder = info.Order or 0
-					}})
-					--
-					local sliderButton = utility:Create({Type = "TextButton", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Position = UDim2.new(0, 0, 0, 0),
-						Size = UDim2.new(1, 0, 1, 0),
-						Text = ""
-					}})
-					--
-					if (info.Name or info.name or info.Text or info.text) then
-						local sliderTitle = utility:Create({Type = "TextLabel", Properties = {
-							AnchorPoint = Vector2.new(0, 0),
-							BackgroundTransparency = 1,
-							BorderSizePixel = 0,
-							Parent = contentHolder,
-							Size = UDim2.new(1, -16, 0, 14),
-							Position = UDim2.new(0, 16, 0, 0),
-							Font = "Code",
-							RichText = true,
-							Text = (info.Name or info.name or info.Text or info.text),
-							TextColor3 = Color3.fromRGB(180, 180, 180),
-							TextStrokeTransparency = 0.5,
-							TextSize = 13,
-							TextXAlignment = "Left"
-						}})
-					end
-					--
-					local sliderFrame = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = Color3.fromRGB(1, 1, 1),
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Position = UDim2.new(0, 16, 0, (info.Name or info.name or info.Text or info.text) and 14 or 0),
-						Size = UDim2.new(1, -32, 0, 10)
-					}})
-					--
-					local sliderInlineGradient = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = Color3.fromRGB(63, 63, 63),
-						BorderSizePixel = 0,
-						Parent = sliderFrame,
-						Position = UDim2.new(0, 1, 0, 1),
-						Size = UDim2.new(1, -2, 1, -2)
-					}})
-					--
-					local sliderGradient = utility:Create({Type = "UIGradient", Properties = {
-						Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}),
-						Rotation = 90,
-						Parent = sliderInlineGradient
-					}})
-					--
-					local sliderSlideHolder = utility:Create({Type = "Frame", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = sliderFrame,
-						Position = UDim2.new(0, 1, 0, 1),
-						Size = UDim2.new(1, -2, 1, -2)
-					}})
-					--
-					local sliderSlide = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = Color3.fromRGB(170, 85, 235),
-						BorderSizePixel = 0,
-						Parent = sliderSlideHolder,
-						Position = UDim2.new(0, 0, 0, 0),
-						Size = UDim2.new(0.5, 0, 1, 0)
-					}})
-					--
-					local sliderGradient = utility:Create({Type = "UIGradient", Properties = {
-						Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}),
-						Rotation = 90,
-						Parent = sliderSlide
-					}})
-					--
-					local sliderValue = utility:Create({Type = "TextLabel", Properties = {
-						AnchorPoint = Vector2.new(0.5, 0.25),
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = sliderSlide,
-						Size = UDim2.new(0, 10, 0, 14),
-						Position = UDim2.new(1, 0, 0.5, 0),
-						Font = "Code",
-						RichText = true,
-						Text = tostring(slider.state) .. tostring(slider.suffix),
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextStrokeTransparency = 0.5,
-						TextSize = 13,
-						TextXAlignment = "Left"
-					}})
-					-- // Functions / Connections
-					local connection = utility:Connection({Type = sliderButton.MouseButton1Down, Callback = function()
-						slider.holding = true
-						slider:Refresh()
-					end})
-					--
-					local connection2 = utility:Connection({Type = uis.InputEnded, Callback = function()
-						slider.holding = false
-					end})
-					--
-					local connection3 = utility:Connection({Type = uis.InputChanged, Callback = function()
-						if slider.holding then
-							slider:Refresh()
-						end
-					end})
-					-- // Nested Functions
-					function slider:Remove()
-						contentHolder:Remove()
-						slider = nil
-						--
-						utility:RemoveConnection({Connection = connection})
-						connection = nil
-						utility:RemoveConnection({Connection = connection2})
-						connection2 = nil
-						utility:RemoveConnection({Connection = connection3})
-						connection3 = nil
-						--
-						section:Update()
-					end
-					--
-					function slider:Get()
-						return slider.state
-					end
-					--
+					local slider = { state = info.Default or 0, min = info.Minimum or 0, max = info.Maximum or 10, decimals = 1 / (info.Decimals or 0.25), suffix = info.Suffix or "", callback = info.Callback or function() end, holding = false }
+					local contentHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionContentHolder, Size = UDim2.new(1, 0, 0, (info.Name or info.name) and 24 or 10), LayoutOrder = info.Order or 0 }})
+					local sliderButton = utility:Create({Type = "TextButton", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0), Text = "" }})
+					if (info.Name or info.name) then utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(1, -16, 0, 14), Position = UDim2.new(0, 16, 0, 0), Font = "Code", RichText = true, Text = (info.Name or info.name), TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }}) end
+					local sliderFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(1, 1, 1), BorderSizePixel = 0, Parent = contentHolder, Position = UDim2.new(0, 16, 0, (info.Name or info.name) and 14 or 0), Size = UDim2.new(1, -32, 0, 10) }})
+					local sliderInlineGradient = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(63, 63, 63), BorderSizePixel = 0, Parent = sliderFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
+					utility:Create({Type = "UIGradient", Properties = { Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}), Rotation = 90, Parent = sliderInlineGradient }})
+					local sliderSlideHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sliderFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
+					local sliderSlide = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(170, 85, 235), BorderSizePixel = 0, Parent = sliderSlideHolder, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(0.5, 0, 1, 0) }})
+					utility:Create({Type = "UIGradient", Properties = { Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}), Rotation = 90, Parent = sliderSlide }})
+					local sliderValue = utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0.5, 0.25), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sliderSlide, Size = UDim2.new(0, 10, 0, 14), Position = UDim2.new(1, 0, 0.5, 0), Font = "Code", RichText = true, Text = tostring(slider.state) .. tostring(slider.suffix), TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
+					local c1 = utility:Connection({Type = sliderButton.MouseButton1Down, Callback = function() slider.holding = true; slider:Refresh() end})
+					local c2 = utility:Connection({Type = uis.InputEnded, Callback = function() slider.holding = false end})
+					local c3 = utility:Connection({Type = uis.InputChanged, Callback = function() if slider.holding then slider:Refresh() end end})
+					function slider:Remove() contentHolder:Remove(); utility:RemoveConnection({Connection=c1}); utility:RemoveConnection({Connection=c2}); utility:RemoveConnection({Connection=c3}); slider = nil end
+					function slider:Get() return slider.state end
 					function slider:Set(value, runCallback)
 						slider.state = math.clamp(math.round(value * slider.decimals) / slider.decimals, slider.min, slider.max)
-						sliderSlide.Size = UDim2.new(1 - ((slider.max - slider.state) / (slider.max - slider.min)), 0, 1, 0)
+						sliderSlide.Size = UDim2.new((slider.state - slider.min) / (slider.max - slider.min), 0, 1, 0)
 						sliderValue.Text = tostring(slider.state) .. tostring(slider.suffix)
-						if runCallback then
-							pcall(slider.callback, slider.state)
-						end
+						if runCallback then pcall(slider.callback, slider.state) end
 					end
-					--
 					function slider:Refresh()
 						if slider.holding then
 							local mouseLocation = uis:GetMouseLocation()
-							slider:Set(math.clamp(math.floor((slider.min + (slider.max - slider.min) * (math.clamp(mouseLocation.X - sliderSlide.AbsolutePosition.X, 0, sliderSlideHolder.AbsoluteSize.X) / sliderSlideHolder.AbsoluteSize.X)) * slider.decimals) / slider.decimals, slider.min, slider.max), true)
+							local percent = math.clamp((mouseLocation.X - sliderSlideHolder.AbsolutePosition.X) / sliderSlideHolder.AbsoluteSize.X, 0, 1)
+							local value = slider.min + (slider.max - slider.min) * percent
+							slider:Set(value, true)
 						end
 					end
-					-- // Returning + Other
-					section:Update()
 					slider:Set(slider.state)
-					--
 					return slider
 				end
-				--
-				-- // [ADDED] Dropdown Function
+				
 				function section:Dropdown(dropdownInfo)
-					-- // Variables
 					local info = dropdownInfo or {}
 					local options = info.Options or {}
-					local dropdown = {
-						state = (info.Default or info.default or options[1]),
-						callback = (info.Callback or info.callback or function() end),
-						open = false
-					}
-					-- // Utilisation
-					local contentHolder = utility:Create({Type = "Frame", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 20),
-						LayoutOrder = info.Order or 0,
-						ZIndex = 5
-					}})
-					--
-					local dropdownTitle = utility:Create({Type = "TextLabel", Properties = {
-						AnchorPoint = Vector2.new(0, 0),
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Size = UDim2.new(0.5, -20, 1, 0),
-						Position = UDim2.new(0, 16, 0, 0),
-						Font = "Code",
-						RichText = true,
-						Text = info.Name or info.name or "Dropdown",
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextStrokeTransparency = 0.5,
-						TextSize = 13,
-						TextXAlignment = "Left"
-					}})
-					--
-					local dropdownButton = utility:Create({Type = "TextButton", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Position = UDim2.new(0.5, 0, 0, 0),
-						Size = UDim2.new(0.5, -16, 1, 0),
-						Text = ""
-					}})
-					--
-					local dropdownFrame = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-						BorderColor3 = Color3.fromRGB(1, 1, 1),
-						BorderMode = "Inset",
-						BorderSizePixel = 1,
-						Parent = dropdownButton,
-						Position = UDim2.new(0, 0, 0, 0),
-						Size = UDim2.new(1, 0, 1, 0)
-					}})
-					--
-					local dropdownInline = utility:Create({Type = "Frame", Properties = {
-						BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-						BorderSizePixel = 0,
-						Parent = dropdownFrame,
-						Position = UDim2.new(0, 1, 0, 1),
-						Size = UDim2.new(1, -2, 1, -2)
-					}})
-					--
-					local dropdownValue = utility:Create({Type = "TextLabel", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = dropdownInline,
-						Size = UDim2.new(1, -10, 1, 0),
-						Position = UDim2.new(0, 5, 0, 0),
-						Font = "Code",
-						RichText = true,
-						Text = dropdown.state,
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextStrokeTransparency = 0.5,
-						TextSize = 13,
-						TextXAlignment = "Left"
-					}})
-					--
-					local dropdownArrow = utility:Create({Type = "TextLabel", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = dropdownInline,
-						Size = UDim2.new(0, 10, 1, 0),
-						Position = UDim2.new(1, -10, 0, 0),
-						Font = "Code",
-						Text = "v",
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextSize = 13,
-						TextXAlignment = "Center"
-					}})
-					--
-					local optionsHolder = utility:Create({Type = "ScrollingFrame", Properties = {
-						Parent = dropdownFrame,
-						Size = UDim2.new(1, 0, 0, 0),
-						Position = UDim2.new(0, 0, 1, 2),
-						Visible = false,
-						BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-						BorderColor3 = Color3.fromRGB(1, 1, 1),
-						BorderSizePixel = 1,
-						ZIndex = 10,
-						AutomaticCanvasSize = "Y",
-						ScrollBarThickness = 3
-					}})
-					--
-					utility:Create({Type = "UIListLayout", Properties = {
-						Parent = optionsHolder,
-						SortOrder = "LayoutOrder"
-					}})
-					--
-					local function toggleDropdown(state)
+					local dropdown = { state = info.Default or options[1], callback = info.Callback or function() end, open = false }
+					local contentHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionContentHolder, Size = UDim2.new(1, 0, 0, 20), LayoutOrder = info.Order or 0, ZIndex = 5 }})
+					utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(0.5, -20, 1, 0), Position = UDim2.new(0, 16, 0, 0), Font = "Code", RichText = true, Text = info.Name or "Dropdown", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
+					local dropdownButton = utility:Create({Type = "TextButton", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.5, -16, 1, 0), Text = "" }})
+					local dropdownFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(45, 45, 45), BorderColor3 = Color3.fromRGB(1, 1, 1), BorderMode = "Inset", BorderSizePixel = 1, Parent = dropdownButton, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0), ClipsDescendants = false }})
+					local dropdownInline = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderSizePixel = 0, Parent = dropdownFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
+					local dropdownValue = utility:Create({Type = "TextLabel", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = dropdownInline, Size = UDim2.new(1, -10, 1, 0), Position = UDim2.new(0, 5, 0, 0), Font = "Code", RichText = true, Text = dropdown.state or "", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
+					local dropdownArrow = utility:Create({Type = "TextLabel", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = dropdownInline, Size = UDim2.new(0, 10, 1, 0), Position = UDim2.new(1, -10, 0, 0), Font = "Code", Text = "v", TextColor3 = Color3.fromRGB(180, 180, 180), TextSize = 13, TextXAlignment = "Center" }})
+					local optionsHolder = utility:Create({Type = "ScrollingFrame", Properties = { Parent = dropdownFrame, Size = UDim2.new(1, 0, 0, 0), Position = UDim2.new(0, 0, 1, 2), Visible = false, BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderColor3 = Color3.fromRGB(1, 1, 1), BorderSizePixel = 1, ZIndex = 10, AutomaticCanvasSize = "Y", ScrollBarThickness = 3 }})
+					utility:Create({Type = "UIListLayout", Properties = { Parent = optionsHolder, SortOrder = Enum.SortOrder.LayoutOrder }})
+					
+					local function toggleDropdownAnim(state)
 						dropdown.open = state
-						optionsHolder.Visible = state
+						contentHolder.ZIndex = state and 10 or 5
 						dropdownArrow.Text = state and "^" or "v"
 						local numOptions = #options
 						local height = math.min(numOptions * 20, 80)
 						local animInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
 						local goal = {Size = state and UDim2.new(1, 0, 0, height) or UDim2.new(1, 0, 0, 0)}
-						ts:Create(optionsHolder, animInfo, goal):Play()
+						if state then optionsHolder.Visible = true end
+						local tween = ts:Create(optionsHolder, animInfo, goal)
+						tween.Completed:Connect(function() if not state then optionsHolder.Visible = false end end)
+						tween:Play()
 					end
-					--
+
 					for i, optionName in ipairs(options) do
-						local optionButton = utility:Create({Type = "TextButton", Properties = {
-							Parent = optionsHolder,
-							Size = UDim2.new(1, 0, 0, 20),
-							Text = "",
-							BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-							LayoutOrder = i
-						}})
-						utility:Create({Type = "TextLabel", Properties = {
-							Parent = optionButton,
-							Size = UDim2.new(1, -10, 1, 0),
-							Position = UDim2.new(0, 5, 0, 0),
-							Font = "Code",
-							Text = optionName,
-							TextColor3 = Color3.fromRGB(180, 180, 180),
-							TextSize = 13,
-							TextXAlignment = "Left",
-							BackgroundTransparency = 1
-						}})
+						local optionButton = utility:Create({Type = "TextButton", Properties = { Parent = optionsHolder, Size = UDim2.new(1, 0, 0, 20), Text = "", BackgroundColor3 = Color3.fromRGB(25, 25, 25), LayoutOrder = i }})
+						utility:Create({Type = "TextLabel", Properties = { Parent = optionButton, Size = UDim2.new(1, -10, 1, 0), Position = UDim2.new(0, 5, 0, 0), Font = "Code", Text = optionName, TextColor3 = Color3.fromRGB(180, 180, 180), TextSize = 13, TextXAlignment = "Left", BackgroundTransparency = 1 }})
 						utility:Connection({Type = optionButton.MouseEnter, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45) end})
 						utility:Connection({Type = optionButton.MouseLeave, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25) end})
-						utility:Connection({Type = optionButton.MouseButton1Click, Callback = function()
-							dropdown:Set(optionName, true)
-							toggleDropdown(false)
-						end})
+						utility:Connection({Type = optionButton.MouseButton1Click, Callback = function() dropdown:Set(optionName, true); dropdown:Close() end})
 					end
-					--
-					utility:Connection({Type = dropdownButton.MouseButton1Click, Callback = function()
-						toggleDropdown(not dropdown.open)
-					end})
-					--
-					function dropdown:Get()
-						return dropdown.state
-					end
-					--
+					
+					function dropdown:Close() if not dropdown.open then return end; toggleDropdownAnim(false); window.activeDropdown = nil end
+					function dropdown:Open() if dropdown.open then return end; if window.activeDropdown then window.activeDropdown:Close() end; window.activeDropdown = dropdown; toggleDropdownAnim(true) end
+					
+					utility:Connection({Type = dropdownButton.MouseButton1Click, Callback = function() if dropdown.open then dropdown:Close() else dropdown:Open() end end})
+					
+					function dropdown:Get() return dropdown.state end
 					function dropdown:Set(value, runCallback)
 						if table.find(options, value) then
 							dropdown.state = value
 							dropdownValue.Text = value
-							if runCallback then
-								dropdown.callback(dropdown.state)
-							end
+							if runCallback then dropdown.callback(dropdown.state) end
 						end
 					end
-					--
-					function dropdown:Remove()
-						contentHolder:Remove()
-						dropdown = nil
-						section:Update()
-					end
-					--
-					section:Update()
+					function dropdown:Remove() contentHolder:Remove(); dropdown = nil end
+					dropdown.frame = dropdownButton -- For the global click handler
 					return dropdown
 				end
-				-- // Returning + Other
+				
 				return section
 			end
-			-- // Returning + Other
-			page.Tab = tab
-			page.PageHolder = pageHolder
-			page.Left = leftHolder
-			page.Right = rightHolder
-			--
+			
+			page.Tab = tab; page.PageHolder = pageHolder; page.Left = leftHolder; page.Right = rightHolder;
 			window.Pages[#window.Pages + 1] = page
 			window:RefreshTabs()
-			--
 			return page
 		end
-		-- // Returning
 		return window
 	end
 end
 
--- // [NEW] Notification System
-local function processNotificationQueue()
-	if #notificationQueue == 0 or isNotifying then
-		return
-	end
-	isNotifying = true
-
-	local info = table.remove(notificationQueue, 1)
-	local title = info.Title or "Notification"
-	local text = info.Text or ""
-	local duration = info.Duration or 5
-	local color = info.Color or Color3.fromRGB(170, 85, 235)
-
-	local notificationFrame = utility:Create({Type = "Frame", Properties = {
-		Parent = notificationGui,
-		Size = UDim2.new(0, 300, 0, 60),
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, -70), -- Start off-screen
-		BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-		BorderColor3 = Color3.fromRGB(10, 10, 10),
-		BorderSizePixel = 2
-	}})
-
-	local accent = utility:Create({Type = "Frame", Properties = {
-		Parent = notificationFrame,
-		Size = UDim2.new(1, 0, 0, 4),
-		BackgroundColor3 = color,
-		BorderSizePixel = 0
-	}})
-
-	local titleLabel = utility:Create({Type = "TextLabel", Properties = {
-		Parent = notificationFrame,
-		Size = UDim2.new(1, -10, 0, 20),
-		Position = UDim2.new(0, 5, 0, 5),
-		Font = "Code",
-		Text = title,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextXAlignment = "Left",
-		BackgroundTransparency = 1,
-		TextSize = 16
-	}})
-
-	local textLabel = utility:Create({Type = "TextLabel", Properties = {
-		Parent = notificationFrame,
-		Size = UDim2.new(1, -10, 1, -28),
-		Position = UDim2.new(0, 5, 0, 28),
-		Font = "Code",
-		Text = text,
-		TextColor3 = Color3.fromRGB(200, 200, 200),
-		TextXAlignment = "Left",
-		TextYAlignment = "Top",
-		TextWrapped = true,
-		BackgroundTransparency = 1,
-		TextSize = 14
-	}})
-
-	local animInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-	local animIn = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, 10)})
-	local animOut = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, -70)})
-
-	animIn:Play()
-	animIn.Completed:Wait()
-
-	task.wait(duration)
-
-	animOut:Play()
-	animOut.Completed:Wait()
-
-	notificationFrame:Destroy()
-	isNotifying = false
-	processNotificationQueue()
-end
-
+-- // Notification System
 function library:Notify(info)
 	if not notificationGui then
-		notificationGui = utility:Create({Type = "ScreenGui", Properties = {
-			Parent = cre,
-			DisplayOrder = 9999,
-			Name = "Obelus_Notifications",
-			ZIndexBehavior = "Global",
-			ResetOnSpawn = false
-		}})
+		notificationGui = utility:Create({Type = "ScreenGui", Properties = { Parent = cre, DisplayOrder = 9999, Name = "Obelus_Notifications", ZIndexBehavior = "Global", ResetOnSpawn = false }})
 	end
-	
 	table.insert(notificationQueue, info)
-	processNotificationQueue()
+	
+	coroutine.wrap(function()
+		if isNotifying then return end
+		isNotifying = true
+		
+		while #notificationQueue > 0 do
+			local currentInfo = table.remove(notificationQueue, 1)
+			local title = currentInfo.Title or "Notification"
+			local text = currentInfo.Text or ""
+			local duration = currentInfo.Duration or 5
+			local color = currentInfo.Color or Color3.fromRGB(170, 85, 235)
+			
+			local notificationFrame = utility:Create({Type = "Frame", Properties = { Parent = notificationGui, Size = UDim2.new(0, 300, 0, 60), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -70), BackgroundColor3 = Color3.fromRGB(30, 30, 30), BorderColor3 = Color3.fromRGB(10, 10, 10), BorderSizePixel = 2 }})
+			utility:Create({Type = "Frame", Properties = { Parent = notificationFrame, Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = color, BorderSizePixel = 0 }})
+			utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 0, 20), Position = UDim2.new(0, 5, 0, 5), Font = "Code", Text = title, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, TextSize = 16 }})
+			utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 1, -28), Position = UDim2.new(0, 5, 0, 28), Font = "Code", Text = text, TextColor3 = Color3.fromRGB(200, 200, 200), TextXAlignment = "Left", TextYAlignment = "Top", TextWrapped = true, BackgroundTransparency = 1, TextSize = 14 }})
+			
+			local animInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			local animIn = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, 10)})
+			local animOut = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, -70)})
+			
+			animIn:Play()
+			animIn.Completed:Wait()
+			task.wait(duration)
+			animOut:Play()
+			animOut.Completed:Wait()
+			notificationFrame:Destroy()
+		end
+		
+		isNotifying = false
+	end)()
 end
 
--- // Returning
 return library
