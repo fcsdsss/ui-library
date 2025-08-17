@@ -1,96 +1,74 @@
-local Obelus = require(game.ReplicatedStorage.ObelusLib)
+-- === 加载UI库 ===
+-- 将库代码保存为 ModuleScript 并在此处引入
+local Obelus = require(game.ReplicatedStorage.ObelusLib) 
 
-local window = Obelus:Window({ name = "<font color='#FFFFFF'>My Awesome Script</font> | v4.1 (Themed)" })
+-- === 创建UI窗口 ===
+local window = Obelus:Window({ name = "<font color='#FFFFFF'>My Awesome Script</font> | v4.2" })
 
+-- === 创建页面 ===
 local combatPage = window:Page({Name = "Combat"})
 local visualsPage = window:Page({Name = "Visuals"})
-local settingsPage = window:Page({Name = "UI Settings"}) -- [新] 设置页面
+local settingsPage = window:Page({Name = "UI Settings"})
 
+-- === 填充页面内容 ===
+
+-- Combat 页面
 local combatSectionLeft = combatPage:Section({Name = "General", Side = "Left", size = 200})
 combatSectionLeft:Toggle({Name = "Aim Assist", Default = true})
-combatSectionLeft:Dropdown({
+local targetPartDropdown = combatSectionLeft:Dropdown({
 	Name = "Target Part",
-	Options = {"Head", "Torso", "HumanoidRootPart"},
+	Options = {"Head", "Torso", "HumanoidRootPart", "Closest Part"},
 	Default = "Head",
+	Callback = function(selectedOption)
+		print("Target Part changed to:", selectedOption)
+	end
 })
 combatSectionLeft:Button({Name = "Test Notification", Callback = function()
 	Obelus:Notify({Title = "Test", Text = "This is a test notification."})
 end})
 
 local combatSectionRight = combatPage:Section({Name = "Aim Assist Settings", Side = "Right", size = 200})
-combatSectionRight:Slider({
-	Name = "Smoothness",
-	Minimum = 0, Maximum = 100, Default = 25, Suffix = "%"
-})
-combatSectionRight:Slider({
-	Name = "FOV Size",
-	Minimum = 10, Maximum = 500, Default = 80, Suffix = "px"
-})
+combatSectionRight:Slider({Name = "Smoothness", Minimum = 0, Maximum = 100, Default = 25, Suffix = "%"})
+combatSectionRight:Slider({Name = "FOV Size", Minimum = 10, Maximum = 500, Default = 80, Suffix = "px"})
 
--- --------- [ Visuals 页面 ] ---------
+-- Visuals 页面
 local espSection = visualsPage:Section({Name = "Player ESP", Side = "Left", size = 150})
 espSection:Toggle({Name = "Box ESP", Default = true})
-espSection:Toggle({Name = "Name ESP"})
+local espModeDropdown = espSection:Dropdown({
+	Name = "ESP Mode",
+	Options = {"2D Box", "3D Box", "Tracers"},
+	Default = "2D Box"
+})
 
--- --------- [ UI Settings 页面 - 新 ] ---------
-local colorSection = settingsPage:Section({Name = "UI Colors", Side = "Left", size = 300})
-
--- 动态为主题中的每种颜色创建RGB滑块
-for colorName, defaultColor in pairs(Obelus.Theme) do
-	if typeof(defaultColor) == "Color3" then
-		colorSection:Label({Name = colorName .. " Color:"})
-		
-		local r,g,b = math.floor(defaultColor.R*255), math.floor(defaultColor.G*255), math.floor(defaultColor.B*255)
-
-		local function updateColor()
-			local newR = Obelus.Theme[colorName .. "_R"] / 255
-			local newG = Obelus.Theme[colorName .. "_G"] / 255
-			local newB = Obelus.Theme[colorName .. "_B"] / 255
-			Obelus.Theme[colorName] = Color3.new(newR, newG, newB)
-			if getgenv().RefreshObelusColors then getgenv().RefreshObelusColors() end
-		end
-
-		Obelus.Theme[colorName .. "_R"] = r
-		Obelus.Theme[colorName .. "_G"] = g
-		Obelus.Theme[colorName .. "_B"] = b
-
-		colorSection:Slider({ Name = "Red", Minimum = 0, Maximum = 255, Default = r, Decimals = 1, Callback = function(v) Obelus.Theme[colorName .. "_R"] = v; updateColor() end })
-		colorSection:Slider({ Name = "Green", Minimum = 0, Maximum = 255, Default = g, Decimals = 1, Callback = function(v) Obelus.Theme[colorName .. "_G"] = v; updateColor() end })
-		colorSection:Slider({ Name = "Blue", Minimum = 0, Maximum = 255, Default = b, Decimals = 1, Callback = function(v) Obelus.Theme[colorName .. "_B"] = v; updateColor() end })
-	end
-end
-
-local settingsSection = settingsPage:Section({Name = "General Settings", Side = "Right", size = 300})
+-- UI Settings 页面
+local settingsSection = settingsPage:Section({Name = "General Settings", Side = "Left", size = 300})
 settingsSection:Dropdown({
 	Name = "Notification Mode",
 	Options = {"Stacking", "Queue"},
-	Default = Obelus.Settings.NotificationMode,
+	Default = "Stacking",
 	Callback = function(mode)
 		Obelus.Settings.NotificationMode = mode
 		Obelus:Notify({Title = "Setting Changed", Text = "Notification mode set to " .. mode})
 	end
 })
-
 settingsSection:Button({
 	Name = "Test Stacked Notifications",
 	Callback = function()
-		local oldMode = Obelus.Settings.NotificationMode
-		Obelus.Settings.NotificationMode = "Stacking" -- 强制堆叠模式用于测试
+		Obelus.Settings.NotificationMode = "Stacking"
 		Obelus:Notify({Title = "Notification 1", Text = "First message.", Duration = 4})
 		task.wait(0.5)
 		Obelus:Notify({Title = "Notification 2", Text = "Second message, stacked.", Duration = 4, Color = Color3.fromRGB(255, 170, 0)})
 		task.wait(0.5)
 		Obelus:Notify({Title = "Notification 3", Text = "Third message.", Duration = 4, Color = Color3.fromRGB(0, 255, 127)})
-		Obelus.Settings.NotificationMode = oldMode -- 恢复原设置
 	end
 })
 
-
-combatPage:Turn(true) -- 默认显示 Combat 页面
+-- === 设置UI初始状态 ===
+combatPage:Turn(true)
 
 task.wait(1)
 Obelus:Notify({
 	Title = "Script Loaded!",
-	Text = "Welcome! Check the UI Settings tab.",
+	Text = "Dropdowns and notifications have been updated.",
 	Duration = 6
 })
