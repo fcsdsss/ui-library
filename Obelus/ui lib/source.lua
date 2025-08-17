@@ -410,7 +410,20 @@ do
 					function dropdown:Close() if not dropdown.open then return end; toggleDropdownAnim(false); window.activeDropdown = nil end
 					function dropdown:Open() if dropdown.open then return end; if window.activeDropdown then window.activeDropdown:Close() end; window.activeDropdown = dropdown; toggleDropdownAnim(true) end
 					
-					utility:Connection({Type = dropdownButton.MouseButton1Click, Callback = function() if dropdown.open then dropdown:Close() else dropdown:Open() end end})
+					-- [REFACTORED] 将 MouseButton1Click 替换为 InputBegan 以支持移动端触摸
+					utility:Connection({
+						Type = dropdownButton.InputBegan,
+						Callback = function(input)
+							-- 确保输入是鼠标左键或触摸
+							if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+								if dropdown.open then
+									dropdown:Close()
+								else
+									dropdown:Open()
+								end
+							end
+						end
+					})
 					
 					function dropdown:Get() return dropdown.state end
 					function dropdown:Set(value, runCallback)
