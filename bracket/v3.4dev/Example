@@ -1,97 +1,65 @@
+-- 1. 加载库
 local Bracket = loadstring(game:HttpGet("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/bracket/v3.4dev/source"))()
 
-Bracket:ToggleUI() 
+-- 2. 设置全局UI开关快捷键 (PC端使用)
+Bracket:ToggleUI({ Key = Enum.KeyCode.RightShift }) 
 
+-- 3. 创建水印和发送通知
 local Watermark = Bracket:Watermark({
     Title = "Bracket v3.4dev",
-    Flag = "UI/Watermark/Position", -- 用于保存位置的标识符
+    Flag = "UI/Watermark/Position",
     Enabled = true
 })
+Bracket:PushNotification({Title = "Bracket Library", Description = "Successfully loaded.", Duration = 8})
 
-Bracket:PushNotification({Title = "Bracket Library", Description = "Successfully loaded v3.4dev.", Duration = 8})
-task.wait(1)
-Bracket:ToastNotification({Title = "Press RightShift to toggle UI", Duration = 5})
-
+-- 4. 创建主窗口
 local Window = Bracket:Window({
-    Name = "bracket UI",
+    Name = "My Awesome UI",
     Enabled = true,
     Color = Color3.fromRGB(100, 125, 255),
     Size = UDim2.new(0, 500, 0, 420),
     Position = UDim2.new(0.5, -250, 0.5, -210)
 })
 
+-- 5. 创建主标签页
 local MainTab = Window:Tab({ Name = "Main" })
-
 do
     local LeftSection = MainTab:Section({ Name = "Features", Side = "Left" })
 
     local MyToggle = LeftSection:Toggle({
         Name = "Enable Awesome Feature",
         Flag = "AwesomeFeatureToggle",
-        Value = true,
-        Callback = function(Value)
-            print("Awesome Feature is now:", Value)
-        end
+        Value = true
     })
-    MyToggle:Colorpicker({
-        Flag = "AwesomeFeatureColor",
-        Value = {0.6, 1, 1, 0, false} -- HSV A Rainbow
-    })
+    MyToggle:Colorpicker({ Flag = "AwesomeFeatureColor" })
 
     LeftSection:Slider({
         Name = "Speed Control",
         Flag = "SpeedSlider",
-        Min = 10,
-        Max = 200,
-        Value = 50,
-        Precise = 0,
-        Unit = " studs/s"
+        Value = 50
     })
-
-    local RightSection = MainTab:Section({ Name = "Other Stuff", Side = "Right" })
-    
-    RightSection:Label({Text = "This is a label on the right side."})
-    
-    local MyButton = RightSection:Button({
-        Name = "Click Me!",
-        Callback = function()
-            Bracket:ToastNotification({Title = "Button Clicked!", Color = Color3.fromRGB(0, 255, 127)})
-        end
-    })
-    MyButton:Tooltip({Text = "This button shows a notification."})
-
 end
 
+-- 6. 创建设置标签页
 local SettingsTab = Window:Tab({ Name = "Settings" })
-
 do
-    SettingsTab:AddConfigSection("MyConfigFolder", "Left")
+    local MenuSection = SettingsTab:Section({ Name = "Menu", Side = "Left"})
+    do
+        local UIToggle = MenuSection:Toggle({
+            Name = "Toggle UI",
+            Flag = "UI/Visible", -- 使用独立的Flag来保存其状态
+            Value = Window.Enabled, -- 初始值与窗口当前状态保持一致
+            Callback = function(newValue)
+                Window.Enabled = newValue
+            end
+        })
 
-    local AppearanceSection = SettingsTab:Section({ Name = "Appearance", Side = "Right"})
-    
-    AppearanceSection:Colorpicker({
-        Name = "UI Theme Color",
-        Flag = "UI/ThemeColor",
-        Value = {0.6, 1, 1, 0, false},
-        Callback = function(HSVAR, Color)
-            Window.Color = Color
-        end
-    })
-    
-    AppearanceSection:Toggle({
-        Name = "Show Watermark",
-        Flag = "UI/WatermarkEnabled",
-        Value = true,
-        Callback = function(Value)
-            Watermark.Enabled = Value
-        end
-    })
+        Window:GetPropertyChangedSignal("Enabled"):Connect(function(newEnabledState)
+            UIToggle.Value = newEnabledState
+        end)
+    end
 
+    SettingsTab:AddConfigSection("MyConfigFolder", "Right") -- 将配置部分移到右边，为菜单腾出空间
 end
 
 Bracket:AutoloadConfig("MyConfigFolder")
-
-local openOnLoad = Bracket:GetValue("UI/OOL") -- 获取一个值
-if openOnLoad ~= nil then
-    Window.Enabled = openOnLoad
-end
