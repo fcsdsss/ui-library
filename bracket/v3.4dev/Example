@@ -1,4 +1,4 @@
--- 1. 加载库
+-- 1. 加载
 local Bracket = loadstring(game:HttpGet("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/bracket/v3.4dev/source"))()
 
 Bracket:ToggleUI() 
