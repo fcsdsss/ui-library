@@ -1,74 +1,157 @@
--- === 加载UI库 ===
--- 将库代码保存为 ModuleScript 并在此处引入
-local Obelus = require(game.ReplicatedStorage.ObelusLib) 
+-- 这种方法的好处是，任何使用此脚本的人都能自动获取您在 GitHub 上的最新版本。
+local Library
+local success, result = pcall(function()
+    -- 使用 HttpGet 获取链接中的原始代码，然后用 loadstring 执行它来返回库
+	local libraryScript = game:GetService("HttpService"):GetAsync("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/Obelus/ui%20lib/source.lua")
+	Library = loadstring(libraryScript)()
+end)
 
--- === 创建UI窗口 ===
-local window = Obelus:Window({ name = "<font color='#FFFFFF'>My Awesome Script</font> | v4.2" })
+-- 如果加载失败，则在输出窗口打印错误并停止脚本
+if not success or not Library then
+	warn("Obelus UI 库加载失败！错误信息:", result)
+	-- 也可以在这里用 Roblox 自带的通知提醒用户
+	game:GetService("StarterGui"):SetCore("SendNotification", {
+		Title = "错误",
+		Text = "UI 库无法从 GitHub 加载。请检查网络连接或链接是否有效。",
+		Duration = 10
+	})
+	return
+end
 
--- === 创建页面 ===
-local combatPage = window:Page({Name = "Combat"})
-local visualsPage = window:Page({Name = "Visuals"})
-local settingsPage = window:Page({Name = "UI Settings"})
+print("Obelus UI 库加载成功！")
 
--- === 填充页面内容 ===
+-- 步骤 2: 创建主窗口
+-- 这是所有 UI 元素的根容器
+local Window = Library:Window({
+	Name = "Obelus 功能演示", -- 窗口左上角的标题
+})
 
--- Combat 页面
-local combatSectionLeft = combatPage:Section({Name = "General", Side = "Left", size = 200})
-combatSectionLeft:Toggle({Name = "Aim Assist", Default = true})
-local targetPartDropdown = combatSectionLeft:Dropdown({
-	Name = "Target Part",
-	Options = {"Head", "Torso", "HumanoidRootPart", "Closest Part"},
-	Default = "Head",
-	Callback = function(selectedOption)
-		print("Target Part changed to:", selectedOption)
+-- 步骤 3: 在窗口中创建多个页面 (Tabs) 来展示不同内容
+local componentsPage = Window:Page({
+	Name = "组件展示" -- 第一个页面的标签名
+})
+
+local infoPage = Window:Page({
+	Name = "关于" -- 第二个页面的标签名
+})
+
+-- =================================================================
+-- 填充第一个页面: "组件展示"
+-- =================================================================
+
+-- 步骤 4: 创建左右两个区域 (Sections) 来组织组件
+local leftSection = componentsPage:Section({
+	Name = "基础组件", -- 区域标题
+	Side = "Left",      -- 放置在页面左侧
+	Size = 300          -- 区域的垂直高度
+})
+
+local rightSection = componentsPage:Section({
+	Name = "输入与交互", -- 区域标题
+	Side = "Right",     -- 放置在页面右侧
+	Size = 300          -- 区域的垂直高度
+})
+
+-- 步骤 5: 在左侧区域中添加基础组件
+
+-- [组件] Label (标签)
+-- 用于显示静态文本
+leftSection:Label({
+	Text = "这是一个静态信息标签。"
+})
+
+-- [组件] Toggle (开关)
+-- 用于布尔值 (true/false) 的切换
+leftSection:Toggle({
+	Name = "启用/禁用声音",
+	Default = true, -- 默认状态为开启
+	Callback = function(state)
+		-- 每次状态改变时，此函数都会被调用
+		print("声音状态已更改为: " .. tostring(state))
+		Library:Notify({
+			Title = "设置更新",
+			Text = "声音已" .. (state and "开启" or "关闭") .. "。"
+		})
 	end
 })
-combatSectionLeft:Button({Name = "Test Notification", Callback = function()
-	Obelus:Notify({Title = "Test", Text = "This is a test notification."})
-end})
 
-local combatSectionRight = combatPage:Section({Name = "Aim Assist Settings", Side = "Right", size = 200})
-combatSectionRight:Slider({Name = "Smoothness", Minimum = 0, Maximum = 100, Default = 25, Suffix = "%"})
-combatSectionRight:Slider({Name = "FOV Size", Minimum = 10, Maximum = 500, Default = 80, Suffix = "px"})
-
--- Visuals 页面
-local espSection = visualsPage:Section({Name = "Player ESP", Side = "Left", size = 150})
-espSection:Toggle({Name = "Box ESP", Default = true})
-local espModeDropdown = espSection:Dropdown({
-	Name = "ESP Mode",
-	Options = {"2D Box", "3D Box", "Tracers"},
-	Default = "2D Box"
-})
-
--- UI Settings 页面
-local settingsSection = settingsPage:Section({Name = "General Settings", Side = "Left", size = 300})
-settingsSection:Dropdown({
-	Name = "Notification Mode",
-	Options = {"Stacking", "Queue"},
-	Default = "Stacking",
-	Callback = function(mode)
-		Obelus.Settings.NotificationMode = mode
-		Obelus:Notify({Title = "Setting Changed", Text = "Notification mode set to " .. mode})
-	end
-})
-settingsSection:Button({
-	Name = "Test Stacked Notifications",
+-- [组件] Button (按钮)
+-- 用于执行一次性操作
+leftSection:Button({
+	Name = "执行一个操作",
 	Callback = function()
-		Obelus.Settings.NotificationMode = "Stacking"
-		Obelus:Notify({Title = "Notification 1", Text = "First message.", Duration = 4})
-		task.wait(0.5)
-		Obelus:Notify({Title = "Notification 2", Text = "Second message, stacked.", Duration = 4, Color = Color3.fromRGB(255, 170, 0)})
-		task.wait(0.5)
-		Obelus:Notify({Title = "Notification 3", Text = "Third message.", Duration = 4, Color = Color3.fromRGB(0, 255, 127)})
+		-- 每次点击按钮时，此函数都会被调用
+		print("按钮被点击了！")
+		Library:Notify({
+			Title = "操作成功",
+			Text = "你成功执行了一个操作！",
+			Duration = 5, -- 通知显示5秒
+			Color = Color3.fromRGB(85, 255, 127) -- 自定义通知的颜色
+		})
 	end
 })
 
--- === 设置UI初始状态 ===
-combatPage:Turn(true)
 
-task.wait(1)
-Obelus:Notify({
-	Title = "Script Loaded!",
-	Text = "Dropdowns and notifications have been updated.",
-	Duration = 6
+-- 步骤 6: 在右侧区域中添加交互式组件
+
+-- [组件] Slider (滑块)
+-- 用于在一定范围内选择一个数值
+rightSection:Slider({
+	Name = "调整视野 (FOV)",
+	Min = 30,         -- 最小值
+	Max = 120,        -- 最大值
+	Default = 70,     -- 默认值
+	Decimals = 1,   -- 值的增量 (0.1 表示可以有1位小数)
+	Suffix = "°",     -- 在数值后面显示的单位
+	Callback = function(value)
+		-- 每次滑块的值改变时，此函数都会被调用
+		print("当前视野值: " .. value .. "°")
+        -- 可以在这里添加代码来实际改变游戏相机的 FieldOfView
+        -- game.Workspace.CurrentCamera.FieldOfView = value
+	end
 })
+
+-- ===================================
+-- >> [核心演示] Dropdown (下拉菜单) <<
+-- ===================================
+rightSection:Dropdown({
+	Name = "选择游戏画质", -- 下拉菜单的标题
+	Values = {"低", "中", "高", "超高"}, -- 选项列表
+	Default = "高", -- 默认选中的值
+	Callback = function(selectedValue)
+		-- 每次选择新选项时，此函数会被调用
+		print("画质已设置为: " .. selectedValue)
+		Library:Notify({
+			Title = "画质设置",
+			Text = "当前画质为: " .. selectedValue
+		})
+	end
+})
+
+-- 再添加一个下拉菜单，展示不同用途
+rightSection:Dropdown({
+	Name = "选择队伍",
+	Values = {"红队", "蓝队", "绿队", "黄队"},
+	Default = "红队",
+	Callback = function(selectedValue)
+		print("你已加入: " .. selectedValue)
+	end
+})
+
+
+-- =================================================================
+-- 填充第二个页面: "关于"
+-- =================================================================
+
+-- 在 "关于" 页面也创建区域来显示信息
+local aboutSection = infoPage:Section({
+	Name = "关于此 UI 库",
+	Side = "Left",
+	Size = 250
+})
+
+aboutSection:Label({ Text = "库名称: Obelus UI Library" })
+aboutSection:Label({ Text = "版本: v2.0 (含动画 & 通知)" })
+aboutSection:Label({ Text = "" }) -- 添加一个空行
+aboutSection:Label({ Text = "这是一个功能演示脚本，" })
+aboutSection:Label({ Text = "展示了所有可用的组件。" })
