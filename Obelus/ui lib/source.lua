@@ -116,8 +116,25 @@ do
 					utility:Create({Type = "UIListLayout", Properties = {Parent = optionsHolder, SortOrder = "LayoutOrder"}})
 					local scrim = utility:Create({Type = "TextButton", Properties = {Parent = screen, Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "", ZIndex = 99, Visible = false}})
 					
-					local function closeDropdown() isOpen = false; optionsHolder.Visible = false; scrim.Visible = false; ts:Create(arrowLabel, TweenInfo.new(0.2), {Rotation = 0}):Play(); end
-					local function openDropdown() if activeDropdown and activeDropdown ~= dropdown then activeDropdown:Close() end; activeDropdown = dropdown; isOpen = true; optionsHolder.Visible = true; scrim.Visible = true; local sizeY = math.min(#options * 20, 100); optionsHolder.Size = UDim2.fromOffset(mainButton.AbsoluteSize.X, sizeY); optionsHolder.Position = UDim2.fromOffset(mainButton.AbsolutePosition.X, mainButton.AbsolutePosition.Y + mainButton.AbsoluteSize.Y); ts:Create(arrowLabel, TweenInfo.new(0.2), {Rotation = 180}):Play(); end
+					local function closeDropdown()
+						isOpen = false
+						optionsHolder.Visible = false
+						scrim.Visible = false
+						ts:Create(arrowLabel, TweenInfo.new(0.2), {Rotation = 0}):Play()
+						activeDropdown = nil
+					end
+
+					local function openDropdown()
+						if activeDropdown and activeDropdown ~= dropdown then activeDropdown:Close() end
+						activeDropdown = dropdown
+						isOpen = true
+						optionsHolder.Visible = true
+						scrim.Visible = true
+						local sizeY = math.min(#options * 20, 100)
+						optionsHolder.Size = UDim2.fromOffset(mainButton.AbsoluteSize.X, sizeY)
+						optionsHolder.Position = UDim2.fromOffset(mainButton.AbsolutePosition.X, mainButton.AbsolutePosition.Y + mainButton.AbsoluteSize.Y)
+						ts:Create(arrowLabel, TweenInfo.new(0.2), {Rotation = 180}):Play()
+					end
 					
 					scrim.MouseButton1Click:Connect(closeDropdown)
 					for _, optionName in ipairs(options) do local optionButton = utility:Create({Type = "TextButton", Properties = {Parent = optionsHolder, Size = UDim2.new(1, 0, 0, 20), BackgroundColor3 = Color3.fromRGB(35, 35, 35), BorderSizePixel = 0, Font = "Code", Text = "  " .. optionName, TextColor3 = Color3.fromRGB(180, 180, 180), TextSize = 13, TextXAlignment = "Left"}}); optionButton.MouseButton1Click:Connect(function() dropdown.state = optionName; currentLabel.Text = optionName; callback(optionName); closeDropdown() end) end
