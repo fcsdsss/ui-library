@@ -156,9 +156,9 @@ function utility.drag(obj)
             local newY = objPosition.Y.Offset + delta.Y
 
             -- 限制UI在屏幕内
-            local viewportSize = workspace.CurrentCamera.ViewportSize
-            newX = math.clamp(newX, 0, viewportSize.X - obj.AbsoluteSize.X)
-            newY = math.clamp(newY, 0, viewportSize.Y - obj.AbsoluteSize.Y)
+           -- local viewportSize = workspace.CurrentCamera.ViewportSize
+           -- newX = math.clamp(newX, 0, viewportSize.X - obj.AbsoluteSize.X)
+          -- newY = math.clamp(newY, 0, viewportSize.Y - obj.AbsoluteSize.Y)
             
             local newPos = UDim2.new(0, newX, 0, newY)
             utility.tween(obj, {library.dragSpeed}, {Position = newPos})
