@@ -40,7 +40,7 @@ do
 		if connectionInfo.Type then
 			local connection = connectionInfo.Type:Connect(connectionInfo.Callback or function() end)
 			--
-			obelus.connections[#obelus.connections] = connection
+			table.insert(obelus.connections, connection)
 			--
 			return connection
 		end
@@ -378,7 +378,7 @@ do
 			}})
 			-- // Functions / Connections
 			utility:Connection({Type = tabButton.MouseButton1Down, Callback = function()
-				if not page.open then
+				if not page.Open then
 					for index, other_page in pairs(window.Pages) do
 						if other_page ~= page then
 							other_page:Turn(false)
@@ -495,19 +495,19 @@ do
 					VerticalScrollBarInset = "ScrollBar"
 				}})
 				--
+				utility:Create({Type = "UIPadding", Properties = {
+					PaddingTop = UDim.new(0, 10),
+					PaddingBottom = UDim.new(0, 10),
+					Parent = sectionContentHolder
+				}})
+				--
 				utility:Create({Type = "UIListLayout", Properties = {
 					Padding = UDim.new(0, 5),
 					Parent = sectionContentHolder,
-					FillDirection = "Vertical"
+					FillDirection = "Vertical",
+					SortOrder = "LayoutOrder"
 				}})
 				--
-				local sectionInline = utility:Create({Type = "Frame", Properties = {
-					BackgroundColor3 = Color3.fromRGB(19, 19, 19),
-					BorderSizePixel = 0,
-					Parent = sectionContentHolder,
-					Position = UDim2.new(0, 1, 0, 1),
-					Size = UDim2.new(1, 0, 0, 10)
-				}})
 				-- // Functions / Connections
 				-- // Nested Functions
 				function section:Update()
@@ -527,7 +527,8 @@ do
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 14)
+						Size = UDim2.new(1, 0, 0, 14),
+						LayoutOrder = info.Order or 0
 					}})
 					--
 					local labelTitle = utility:Create({Type = "TextLabel", Properties = {
@@ -571,7 +572,8 @@ do
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 14)
+						Size = UDim2.new(1, 0, 0, 14),
+						LayoutOrder = info.Order or 0
 					}})
 					--
 					local toggleButton = utility:Create({Type = "TextButton", Properties = {
@@ -622,9 +624,7 @@ do
 					}})
 					-- // Functions / Connections
 					local connection = utility:Connection({Type = toggleButton.MouseButton1Down, Callback = function()
-						toggle.state = not toggle.state
-						toggleInlineGradient.BackgroundColor3 = toggle.state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(63, 63, 63)
-						toggle.callback(toggle.state)
+						toggle:Set(not toggle.state, true)
 					end})
 					-- // Nested Functions
 					function toggle:Remove()
@@ -641,9 +641,13 @@ do
 						return toggle.state
 					end
 					--
-					function toggle:Set(value)
+					function toggle:Set(value, runCallback)
 						if typeof(value) == "boolean" then
 							toggle.state = value
+							toggleInlineGradient.BackgroundColor3 = toggle.state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(63, 63, 63)
+							if runCallback then
+								toggle.callback(toggle.state)
+							end
 						end
 					end
 					-- // Returning + Other
@@ -663,7 +667,8 @@ do
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 20)
+						Size = UDim2.new(1, 0, 0, 20),
+						LayoutOrder = info.Order or 0
 					}})
 					--
 					local buttonButton = utility:Create({Type = "TextButton", Properties = {
@@ -762,7 +767,8 @@ do
 						BackgroundTransparency = 1,
 						BorderSizePixel = 0,
 						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, (info.Name or info.name or info.Text or info.text) and 24 or 10)
+						Size = UDim2.new(1, 0, 0, (info.Name or info.name or info.Text or info.text) and 24 or 10),
+						LayoutOrder = info.Order or 0
 					}})
 					--
 					local sliderButton = utility:Create({Type = "TextButton", Properties = {
@@ -885,17 +891,19 @@ do
 						return slider.state
 					end
 					--
-					function slider:Set(value)
+					function slider:Set(value, runCallback)
 						slider.state = math.clamp(math.round(value * slider.decimals) / slider.decimals, slider.min, slider.max)
 						sliderSlide.Size = UDim2.new(1 - ((slider.max - slider.state) / (slider.max - slider.min)), 0, 1, 0)
 						sliderValue.Text = tostring(slider.state) .. tostring(slider.suffix)
-						pcall(slider.callback, slider.state)
+						if runCallback then
+							pcall(slider.callback, slider.state)
+						end
 					end
 					--
 					function slider:Refresh()
 						if slider.holding then
 							local mouseLocation = uis:GetMouseLocation()
-							slider:Set(math.clamp(math.floor((slider.min + (slider.max - slider.min) * (math.clamp(mouseLocation.X - sliderSlide.AbsolutePosition.X, 0, sliderSlideHolder.AbsoluteSize.X) / sliderSlideHolder.AbsoluteSize.X)) * slider.decimals) / slider.decimals, slider.min, slider.max))
+							slider:Set(math.clamp(math.floor((slider.min + (slider.max - slider.min) * (math.clamp(mouseLocation.X - sliderSlide.AbsolutePosition.X, 0, sliderSlideHolder.AbsoluteSize.X) / sliderSlideHolder.AbsoluteSize.X)) * slider.decimals) / slider.decimals, slider.min, slider.max), true)
 						end
 					end
 					-- // Returning + Other
@@ -903,6 +911,181 @@ do
 					slider:Set(slider.state)
 					--
 					return slider
+				end
+				--
+				-- // [ADDED] Dropdown Function
+				function section:Dropdown(dropdownInfo)
+					-- // Variables
+					local info = dropdownInfo or {}
+					local options = info.Options or {}
+					local dropdown = {
+						state = (info.Default or info.default or options[1]),
+						callback = (info.Callback or info.callback or function() end),
+						open = false
+					}
+					-- // Utilisation
+					local contentHolder = utility:Create({Type = "Frame", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = sectionContentHolder,
+						Size = UDim2.new(1, 0, 0, 20),
+						LayoutOrder = info.Order or 0,
+						ZIndex = 5
+					}})
+					--
+					local dropdownTitle = utility:Create({Type = "TextLabel", Properties = {
+						AnchorPoint = Vector2.new(0, 0),
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Size = UDim2.new(0.5, -20, 1, 0),
+						Position = UDim2.new(0, 16, 0, 0),
+						Font = "Code",
+						RichText = true,
+						Text = info.Name or info.name or "Dropdown",
+						TextColor3 = Color3.fromRGB(180, 180, 180),
+						TextStrokeTransparency = 0.5,
+						TextSize = 13,
+						TextXAlignment = "Left"
+					}})
+					--
+					local dropdownButton = utility:Create({Type = "TextButton", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = contentHolder,
+						Position = UDim2.new(0.5, 0, 0, 0),
+						Size = UDim2.new(0.5, -16, 1, 0),
+						Text = ""
+					}})
+					--
+					local dropdownFrame = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+						BorderColor3 = Color3.fromRGB(1, 1, 1),
+						BorderMode = "Inset",
+						BorderSizePixel = 1,
+						Parent = dropdownButton,
+						Position = UDim2.new(0, 0, 0, 0),
+						Size = UDim2.new(1, 0, 1, 0)
+					}})
+					--
+					local dropdownInline = utility:Create({Type = "Frame", Properties = {
+						BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+						BorderSizePixel = 0,
+						Parent = dropdownFrame,
+						Position = UDim2.new(0, 1, 0, 1),
+						Size = UDim2.new(1, -2, 1, -2)
+					}})
+					--
+					local dropdownValue = utility:Create({Type = "TextLabel", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = dropdownInline,
+						Size = UDim2.new(1, -10, 1, 0),
+						Position = UDim2.new(0, 5, 0, 0),
+						Font = "Code",
+						RichText = true,
+						Text = dropdown.state,
+						TextColor3 = Color3.fromRGB(180, 180, 180),
+						TextStrokeTransparency = 0.5,
+						TextSize = 13,
+						TextXAlignment = "Left"
+					}})
+					--
+					local dropdownArrow = utility:Create({Type = "TextLabel", Properties = {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Parent = dropdownInline,
+						Size = UDim2.new(0, 10, 1, 0),
+						Position = UDim2.new(1, -10, 0, 0),
+						Font = "Code",
+						Text = "v",
+						TextColor3 = Color3.fromRGB(180, 180, 180),
+						TextSize = 13,
+						TextXAlignment = "Center"
+					}})
+					--
+					local optionsHolder = utility:Create({Type = "ScrollingFrame", Properties = {
+						Parent = dropdownFrame,
+						Size = UDim2.new(1, 0, 0, 0),
+						Position = UDim2.new(0, 0, 1, 2),
+						Visible = false,
+						BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+						BorderColor3 = Color3.fromRGB(1, 1, 1),
+						BorderSizePixel = 1,
+						ZIndex = 10,
+						AutomaticCanvasSize = "Y",
+						ScrollBarThickness = 3
+					}})
+					--
+					utility:Create({Type = "UIListLayout", Properties = {
+						Parent = optionsHolder,
+						SortOrder = "LayoutOrder"
+					}})
+					--
+					local function toggleDropdown(state)
+						dropdown.open = state
+						optionsHolder.Visible = state
+						dropdownArrow.Text = state and "^" or "v"
+						local numOptions = #options
+						local height = math.min(numOptions * 20, 80)
+						local animInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
+						local goal = {Size = state and UDim2.new(1, 0, 0, height) or UDim2.new(1, 0, 0, 0)}
+						ts:Create(optionsHolder, animInfo, goal):Play()
+					end
+					--
+					for i, optionName in ipairs(options) do
+						local optionButton = utility:Create({Type = "TextButton", Properties = {
+							Parent = optionsHolder,
+							Size = UDim2.new(1, 0, 0, 20),
+							Text = "",
+							BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+							LayoutOrder = i
+						}})
+						utility:Create({Type = "TextLabel", Properties = {
+							Parent = optionButton,
+							Size = UDim2.new(1, -10, 1, 0),
+							Position = UDim2.new(0, 5, 0, 0),
+							Font = "Code",
+							Text = optionName,
+							TextColor3 = Color3.fromRGB(180, 180, 180),
+							TextSize = 13,
+							TextXAlignment = "Left",
+							BackgroundTransparency = 1
+						}})
+						utility:Connection({Type = optionButton.MouseEnter, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45) end})
+						utility:Connection({Type = optionButton.MouseLeave, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25) end})
+						utility:Connection({Type = optionButton.MouseButton1Click, Callback = function()
+							dropdown:Set(optionName, true)
+							toggleDropdown(false)
+						end})
+					end
+					--
+					utility:Connection({Type = dropdownButton.MouseButton1Click, Callback = function()
+						toggleDropdown(not dropdown.open)
+					end})
+					--
+					function dropdown:Get()
+						return dropdown.state
+					end
+					--
+					function dropdown:Set(value, runCallback)
+						if table.find(options, value) then
+							dropdown.state = value
+							dropdownValue.Text = value
+							if runCallback then
+								dropdown.callback(dropdown.state)
+							end
+						end
+					end
+					--
+					function dropdown:Remove()
+						contentHolder:Remove()
+						dropdown = nil
+						section:Update()
+					end
+					--
+					section:Update()
+					return dropdown
 				end
 				-- // Returning + Other
 				return section
