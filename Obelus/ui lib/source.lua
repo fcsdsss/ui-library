@@ -1,5 +1,3 @@
--- // Obelus UI Library - v2.0
-
 -- // Library Tables
 local library = {}
 local utility = {}
@@ -17,9 +15,6 @@ library.__index = library
 local notificationQueue = {}
 local isNotifying = false
 local notificationGui
-
--- // [MODIFIED] Dropdown Management
-obelus.currentDropdown = nil -- Track the currently open dropdown
 
 -- // Functions
 do
@@ -45,7 +40,7 @@ do
 		if connectionInfo.Type then
 			local connection = connectionInfo.Type:Connect(connectionInfo.Callback or function() end)
 			--
-			table.insert(obelus.connections, connection)
+			obelus.connections[#obelus.connections] = connection
 			--
 			return connection
 		end
@@ -291,14 +286,6 @@ do
                 end
             end
 		end})
-        
-        -- Close dropdown when clicking anywhere else
-		screen.MouseButton1Down:Connect(function()
-			if obelus.currentDropdown and not obelus.currentDropdown.isMouseOver then
-				obelus.currentDropdown:Close()
-			end
-		end)
-
 		-- // Nested Functions
 		function window:RefreshTabs()
 			for index, page in pairs(window.Pages) do
@@ -511,8 +498,7 @@ do
 				utility:Create({Type = "UIListLayout", Properties = {
 					Padding = UDim.new(0, 5),
 					Parent = sectionContentHolder,
-					FillDirection = "Vertical",
-                    SortOrder = Enum.SortOrder.LayoutOrder,
+					FillDirection = "Vertical"
 				}})
 				--
 				local sectionInline = utility:Create({Type = "Frame", Properties = {
@@ -918,181 +904,6 @@ do
 					--
 					return slider
 				end
-                
-                -- // =============================================
-				-- // [NEWLY ADDED] DROPDOWN COMPONENT STARTS HERE
-				-- // =============================================
-				function section:Dropdown(dropdownInfo)
-					-- // Variables
-					local info = dropdownInfo or {}
-					local dropdown = {
-						state = info.Default or (info.Values and info.Values[1]) or nil,
-						callback = info.Callback or info.callback or function() end,
-						open = false,
-						isMouseOver = false,
-						connections = {}
-					}
-
-					-- // Utilisation
-					local contentHolder = utility:Create({Type = "Frame", Properties = {
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = sectionContentHolder,
-						Size = UDim2.new(1, 0, 0, 39),
-						ZIndex = 5,
-					}})
-
-					local dropdownTitle = utility:Create({Type = "TextLabel", Properties = {
-						AnchorPoint = Vector2.new(0, 0),
-						BackgroundTransparency = 1,
-						BorderSizePixel = 0,
-						Parent = contentHolder,
-						Size = UDim2.new(1, -16, 0, 14),
-						Position = UDim2.new(0, 16, 0, 0),
-						Font = "Code",
-						RichText = true,
-						Text = info.Name or info.name or "Dropdown",
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextStrokeTransparency = 0.5,
-						TextSize = 13,
-						TextXAlignment = "Left"
-					}})
-
-					local dropdownButton = utility:Create({Type = "TextButton", Properties = {
-						BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-						BorderColor3 = Color3.fromRGB(1, 1, 1),
-						BorderMode = "Inset",
-						BorderSizePixel = 1,
-						Parent = contentHolder,
-						Position = UDim2.new(0, 16, 0, 16),
-						Size = UDim2.new(1, -32, 1, -16),
-						Font = "Code",
-						Text = tostring(dropdown.state or "Select..."),
-						TextColor3 = Color3.fromRGB(180, 180, 180),
-						TextSize = 13,
-						ZIndex = 6,
-					}})
-
-					local optionsHolder = utility:Create({Type = "ScrollingFrame", Properties = {
-						Parent = sectionMain,
-						Visible = false,
-						BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-						BorderColor3 = Color3.fromRGB(1, 1, 1),
-						BorderMode = "Inset",
-						BorderSizePixel = 1,
-						Position = UDim2.new(0, 16, 0, 56), -- Position below the button
-						Size = UDim2.new(1, -32, 0, 100), -- Adjust height as needed
-						ZIndex = 10,
-						CanvasSize = UDim2.new(0,0,0,0),
-						ScrollBarImageColor3 = Color3.fromRGB(65, 65, 65),
-						ScrollBarThickness = 4,
-						AutomaticCanvasSize = "Y",
-					}})
-
-					utility:Create({Type = "UIListLayout", Properties = {
-						Parent = optionsHolder,
-						FillDirection = "Vertical",
-						SortOrder = "LayoutOrder"
-					}})
-
-					local function createOption(value)
-						local optionButton = utility:Create({Type = "TextButton", Properties = {
-							Parent = optionsHolder,
-							Size = UDim2.new(1, 0, 0, 20),
-							BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-							BorderColor3 = Color3.fromRGB(45, 45, 45),
-							Text = tostring(value),
-							Font = "Code",
-							TextColor3 = Color3.fromRGB(180, 180, 180),
-							TextSize = 13,
-							ZIndex = 11,
-						}})
-						
-						optionButton.MouseButton1Click:Connect(function()
-							dropdown:Set(value)
-							dropdown:Close()
-						end)
-
-						optionButton.MouseEnter:Connect(function() optionButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60) end)
-						optionButton.MouseLeave:Connect(function() optionButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25) end)
-					end
-
-					if info.Values and typeof(info.Values) == "table" then
-						for _, value in ipairs(info.Values) do
-							createOption(value)
-						end
-					end
-
-					-- // Nested Functions
-					function dropdown:Close()
-						if not dropdown.open then return end
-						dropdown.open = false
-						obelus.currentDropdown = nil
-						ts:Create(optionsHolder, TweenInfo.new(0.2), {Size = UDim2.new(optionsHolder.Size.X.Scale, optionsHolder.Size.X.Offset, 0, 0)}):Play()
-						task.wait(0.2)
-						optionsHolder.Visible = false
-					end
-
-					function dropdown:Open()
-						if dropdown.open then return end
-						
-						if obelus.currentDropdown then
-							obelus.currentDropdown:Close()
-						end
-
-						dropdown.open = true
-						obelus.currentDropdown = dropdown
-						optionsHolder.Size = UDim2.new(optionsHolder.Size.X.Scale, optionsHolder.Size.X.Offset, 0, 0)
-						optionsHolder.Visible = true
-						ts:Create(optionsHolder, TweenInfo.new(0.2), {Size = UDim2.new(optionsHolder.Size.X.Scale, optionsHolder.Size.X.Offset, 0, 100)}):Play()
-					end
-
-					function dropdown:Set(value)
-						dropdown.state = value
-						dropdownButton.Text = tostring(value)
-						pcall(dropdown.callback, dropdown.state)
-					end
-					
-					function dropdown:Get()
-						return dropdown.state
-					end
-					
-					function dropdown:Remove()
-						dropdown:Close()
-						for _, conn in ipairs(dropdown.connections) do
-							utility:RemoveConnection({Connection = conn})
-						end
-						contentHolder:Destroy()
-						optionsHolder:Destroy()
-						dropdown = nil
-						section:Update()
-					end
-					
-					-- Track mouse for closing logic
-					local function updateMouseOver(instance)
-						instance.MouseEnter:Connect(function() dropdown.isMouseOver = true end)
-						instance.MouseLeave:Connect(function() dropdown.isMouseOver = false end)
-					end
-					
-					updateMouseOver(dropdownButton)
-					updateMouseOver(optionsHolder)
-
-					-- // Connections
-					table.insert(dropdown.connections, utility:Connection({Type = dropdownButton.MouseButton1Click, Callback = function()
-						if dropdown.open then
-							dropdown:Close()
-						else
-							dropdown:Open()
-						end
-					end}))
-					
-					-- // Returning + Other
-					section:Update()
-					return dropdown
-				end
-				-- // DROPDOWN COMPONENT ENDS HERE
-				-- // ============================
-
 				-- // Returning + Other
 				return section
 			end
@@ -1199,7 +1010,6 @@ function library:Notify(info)
 	table.insert(notificationQueue, info)
 	processNotificationQueue()
 end
-
 
 -- // Returning
 return library
