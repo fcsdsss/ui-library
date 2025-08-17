@@ -4,11 +4,18 @@ local utility = {}
 local obelus = {
 	connections = {}
 }
--- // Variables
+-- // Services & Variables
+local ts = game:GetService("TweenService")
 local uis = game:GetService("UserInputService")
 local cre = game:GetService("CoreGui")
 -- // Indexing
 library.__index = library
+
+-- // [NEW] Notification Queue
+local notificationQueue = {}
+local isNotifying = false
+local notificationGui
+
 -- // Functions
 do
 	function utility:Create(createInfo)
@@ -61,6 +68,11 @@ do
 		local window = {Pages = {}, Dragging = false, Delta = UDim2.new(), Delta2 = Vector3.new()}
         local toggleDragging, toggleDelta, toggleDelta2 = false, UDim2.new(), Vector3.new()
         local isPotentialClick = false
+		
+		-- // [NEW] Animation State
+		local isWindowOpen = false
+		local isWindowAnimating = false
+
 		-- // Utilisation
 		local screen = utility:Create({Type = "ScreenGui", Properties = {
 			Parent = cre,
@@ -80,7 +92,8 @@ do
 			Parent = screen,
 			Position = UDim2.new(0.5, 0, 0.5, 0),
 			Size = UDim2.new(0, 516, 0, 390),
-            Visible = false 
+            Visible = false,
+			ClipsDescendants = true
 		}})
 
         local toggleButton = utility:Create({Type = "TextButton", Properties = {
@@ -95,10 +108,34 @@ do
             TextSize = 14,
             ZIndex = 9999
         }})
-        
-        toggleButton.MouseButton1Click:Connect(function()
-            if isPotentialClick then
-                main.Visible = not main.Visible
+		
+		-- // [NEW] Open/Close Animation Logic
+		toggleButton.MouseButton1Click:Connect(function()
+            if isPotentialClick and not isWindowAnimating then
+				isWindowAnimating = true
+				isWindowOpen = not isWindowOpen
+
+				local openSize = UDim2.new(0, 516, 0, 390)
+				local closedSize = UDim2.new(0, 516, 0, 0)
+				
+				local animInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+				local goal = {}
+
+				if isWindowOpen then
+					goal.Size = openSize
+					main.Visible = true
+				else
+					goal.Size = closedSize
+				end
+				
+				local tween = ts:Create(main, animInfo, goal)
+				tween.Completed:Connect(function()
+					if not isWindowOpen then
+						main.Visible = false
+					end
+					isWindowAnimating = false
+				end)
+				tween:Play()
             end
         end)
 
@@ -670,7 +707,24 @@ do
 						TextSize = 13,
 						TextXAlignment = "Center"
 					}})
-					--
+					
+					-- // [NEW] Button Click Feedback Animation
+					local originalColor = buttonInline.BackgroundColor3
+					local pressedColor = Color3.new(originalColor.r * 0.8, originalColor.g * 0.8, originalColor.b * 0.8)
+					local animInfo = TweenInfo.new(0.1)
+
+					utility:Connection({Type = buttonButton.InputBegan, Callback = function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+							ts:Create(buttonInline, animInfo, {BackgroundColor3 = pressedColor}):Play()
+						end
+					end})
+
+					utility:Connection({Type = buttonButton.InputEnded, Callback = function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+							ts:Create(buttonInline, animInfo, {BackgroundColor3 = originalColor}):Play()
+						end
+					end})
+
 					-- // Functions / Connections
 					local connection = utility:Connection({Type = buttonButton.MouseButton1Down, Callback = function()
 						button.callback()
@@ -868,5 +922,94 @@ do
 		return window
 	end
 end
+
+-- // [NEW] Notification System
+local function processNotificationQueue()
+	if #notificationQueue == 0 or isNotifying then
+		return
+	end
+	isNotifying = true
+
+	local info = table.remove(notificationQueue, 1)
+	local title = info.Title or "Notification"
+	local text = info.Text or ""
+	local duration = info.Duration or 5
+	local color = info.Color or Color3.fromRGB(170, 85, 235)
+
+	local notificationFrame = utility:Create({Type = "Frame", Properties = {
+		Parent = notificationGui,
+		Size = UDim2.new(0, 300, 0, 60),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, -70), -- Start off-screen
+		BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+		BorderColor3 = Color3.fromRGB(10, 10, 10),
+		BorderSizePixel = 2
+	}})
+
+	local accent = utility:Create({Type = "Frame", Properties = {
+		Parent = notificationFrame,
+		Size = UDim2.new(1, 0, 0, 4),
+		BackgroundColor3 = color,
+		BorderSizePixel = 0
+	}})
+
+	local titleLabel = utility:Create({Type = "TextLabel", Properties = {
+		Parent = notificationFrame,
+		Size = UDim2.new(1, -10, 0, 20),
+		Position = UDim2.new(0, 5, 0, 5),
+		Font = "Code",
+		Text = title,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		TextXAlignment = "Left",
+		BackgroundTransparency = 1,
+		TextSize = 16
+	}})
+
+	local textLabel = utility:Create({Type = "TextLabel", Properties = {
+		Parent = notificationFrame,
+		Size = UDim2.new(1, -10, 1, -28),
+		Position = UDim2.new(0, 5, 0, 28),
+		Font = "Code",
+		Text = text,
+		TextColor3 = Color3.fromRGB(200, 200, 200),
+		TextXAlignment = "Left",
+		TextYAlignment = "Top",
+		TextWrapped = true,
+		BackgroundTransparency = 1,
+		TextSize = 14
+	}})
+
+	local animInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local animIn = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, 10)})
+	local animOut = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, -70)})
+
+	animIn:Play()
+	animIn.Completed:Wait()
+
+	task.wait(duration)
+
+	animOut:Play()
+	animOut.Completed:Wait()
+
+	notificationFrame:Destroy()
+	isNotifying = false
+	processNotificationQueue()
+end
+
+function library:Notify(info)
+	if not notificationGui then
+		notificationGui = utility:Create({Type = "ScreenGui", Properties = {
+			Parent = cre,
+			DisplayOrder = 9999,
+			Name = "Obelus_Notifications",
+			ZIndexBehavior = "Global",
+			ResetOnSpawn = false
+		}})
+	end
+	
+	table.insert(notificationQueue, info)
+	processNotificationQueue()
+end
+
 -- // Returning
 return library
