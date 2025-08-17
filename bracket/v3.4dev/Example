@@ -1,65 +1,143 @@
 -- 1. 加载库
 local Bracket = loadstring(game:HttpGet("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/bracket/v3.4dev/source"))()
 
--- 2. 设置全局UI开关快捷键 (PC端使用)
-Bracket:ToggleUI({ Key = Enum.KeyCode.RightShift }) 
+Bracket:ToggleUI() 
 
--- 3. 创建水印和发送通知
+--- 仅在移动设备上创建一个独立的UI开关按钮
+Bracket:CreateMobileToggleButton({
+    Position = UDim2.new(0, 15, 0, 15), -- 按钮位置
+    Text = "菜单" -- 可以自定义文本
+})
+
+--- 创建一个独立的UI位置复位按钮
+Bracket:CreateResetButton({
+    Position = UDim2.new(0, 15, 0, 60) -- 放在开关按钮下方
+})
+
+-- 3. 创建一个独立的水印
 local Watermark = Bracket:Watermark({
-    Title = "Bracket v3.4dev",
+    Title = "Bracket v3.4dev Showcase",
     Flag = "UI/Watermark/Position",
     Enabled = true
 })
-Bracket:PushNotification({Title = "Bracket Library", Description = "Successfully loaded.", Duration = 8})
 
--- 4. 创建主窗口
+-- 4. 发送欢迎通知
+Bracket:PushNotification({Title = "Bracket Showcase", Description = "所有功能已加载。按 RightShift 或点击按钮开关UI。", Duration = 10})
+
+-- 5. 创建主窗口
 local Window = Bracket:Window({
-    Name = "My Awesome UI",
+    Name = "Bracket v3.4 Showcase",
     Enabled = true,
-    Color = Color3.fromRGB(100, 125, 255),
-    Size = UDim2.new(0, 420, 0, 390),
-    Position = UDim2.new(0.5, -120, 0.5, -120)
+    Color = Color3.fromRGB(85, 170, 255),
+    Size = UDim2.new(0, 520, 0, 450),
+    Position = UDim2.new(0.5, -260, 0.5, -225)
 })
 
--- 5. 创建主标签页
-local MainTab = Window:Tab({ Name = "Main" })
+local MainTab = Window:Tab({ Name = "Main Components" })
 do
-    local LeftSection = MainTab:Section({ Name = "Features", Side = "Left" })
+    local LeftSection = MainTab:Section({ Name = "Interactive Elements", Side = "Left" })
+    do
+        local FpsUnlockerToggle = LeftSection:Toggle({
+            Name = "Unlock FPS",
+            Flag = "Performance/UnlockFPS",
+            Value = false,
+            Callback = function(Value)
+                Bracket:ToastNotification({Title = "FPS Unlocker: " .. (Value and "Enabled" or "Disabled")})
+            end
+        })
+        FpsUnlockerToggle:Colorpicker({ Flag = "Performance/UnlockFPS_Color" })
+        FpsUnlockerToggle:Keybind({ Value = "F", Flag = "Performance/UnlockFPS_Keybind" })
 
-    local MyToggle = LeftSection:Toggle({
-        Name = "Enable Awesome Feature",
-        Flag = "AwesomeFeatureToggle",
-        Value = true
-    })
-    MyToggle:Colorpicker({ Flag = "AwesomeFeatureColor" })
+        -- 一个滑块
+        LeftSection:Slider({
+            Name = "WalkSpeed",
+            Flag = "Player/WalkSpeed",
+            Min = 16,
+            Max = 200,
+            Value = 16,
+            Precise = 0, -- 0位小数
+            Unit = " studs/s"
+        })
 
-    LeftSection:Slider({
-        Name = "Speed Control",
-        Flag = "SpeedSlider",
-        Value = 50
-    })
+        -- 一个文本输入框
+        LeftSection:Textbox({
+            Name = "Custom Chat Message",
+            Flag = "Misc/ChatMessage",
+            Placeholder = "在此输入消息...",
+            Callback = function(Text, EnterPressed)
+                if EnterPressed then
+                    Bracket:ToastNotification({Title = "Sent: " .. Text, Color = Color3.fromRGB(255, 255, 100)})
+                end
+            end
+        })
+    end
+
+    local RightSection = MainTab:Section({ Name = "Selection & Visuals", Side = "Right" })
+    do
+        -- 一个按钮
+        local NotifyButton = RightSection:Button({
+            Name = "Show Notification",
+            Callback = function()
+                Bracket:PushNotification({Title = "Button Clicked", Description = "这是一个由按钮触发的通知。"})
+            end
+        })
+        NotifyButton:Tooltip({Text = "点击这里会弹出一个推送通知。"})
+
+        -- 一个下拉菜单
+        RightSection:Dropdown({
+            Name = "Target Part",
+            Flag = "Aim/TargetPart",
+            List = {
+                {Name = "Head", Mode = "Button", Value = true}, -- Mode "Button" 用于单选
+                {Name = "Torso", Mode = "Button"},
+                {Name = "HumanoidRootPart", Mode = "Button"}
+            }
+        })
+
+        RightSection:Colorpicker({
+            Name = "ESP Box Color",
+            Flag = "Visuals/ESP_BoxColor",
+            Value = {0, 1, 1, 0, false} -- 默认为红色
+        })
+    end
 end
 
--- 6. 创建设置标签页
 local SettingsTab = Window:Tab({ Name = "Settings" })
 do
-    local MenuSection = SettingsTab:Section({ Name = "Menu", Side = "Left"})
+    local AppearanceSection = SettingsTab:Section({ Name = "Appearance", Side = "Left"})
     do
-        local UIToggle = MenuSection:Toggle({
-            Name = "Toggle UI",
-            Flag = "UI/Visible", -- 使用独立的Flag来保存其状态
-            Value = Window.Enabled, -- 初始值与窗口当前状态保持一致
-            Callback = function(newValue)
-                Window.Enabled = newValue
+        AppearanceSection:Colorpicker({
+            Name = "UI Theme Color",
+            Flag = "UI/ThemeColor",
+            Callback = function(HSVAR, Color)
+                Window.Color = Color -- 动态改变窗口的主题色
             end
         })
 
-        Window:GetPropertyChangedSignal("Enabled"):Connect(function(newEnabledState)
-            UIToggle.Value = newEnabledState
-        end)
+        AppearanceSection:Toggle({
+            Name = "Show Watermark",
+            Flag = "UI/WatermarkEnabled",
+            Value = Watermark.Enabled, -- 与水印的当前状态同步
+            Callback = function(Value)
+                Watermark.Enabled = Value
+            end
+        })
+        
+        AppearanceSection:Toggle({
+            Name = "Background Blur",
+            Flag = "UI/Blur",
+            Value = Window.Blur,
+            Callback = function(Value)
+                Window.Blur = Value
+            end
+        })
     end
 
-    SettingsTab:AddConfigSection("MyConfigFolder", "Right") -- 将配置部分移到右边，为菜单腾出空间
+    SettingsTab:AddConfigSection("MyUISettings", "Right")
 end
 
-Bracket:AutoloadConfig("MyConfigFolder")
+Bracket:AutoloadConfig("MyUISettings")
+
+Window.Enabled = true
+
+print("Bracket v3.4dev Showcase Initialized!")
