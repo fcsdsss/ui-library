@@ -1,7 +1,7 @@
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/Venus/source", true))()
 
 local window = library:Load({
-    Name = "Venus - New Example", 
+    Name = "Venus示例", 
     Theme = "Dark",
     SizeX = 420,
     SizeY = 390
@@ -31,7 +31,7 @@ local my_toggle = section_left:Toggle({
 local section_right = tab_main:Section({Name = "Inputs & Settings", column = 2})
 
 local my_slider = section_right:Slider({
-    Name = "灵敏度", 
+    Name = "滑块", 
     Min = 0, 
     Max = 100, 
     Default = 75, 
@@ -43,7 +43,7 @@ local my_slider = section_right:Slider({
 })
 
 local my_box = section_right:Box({
-    Name = "输入你的名字...", 
+    Name = "输入框", 
     Flag = "PlayerNameBox", 
     Callback = function(text)
         print("输入框内容已提交: " .. text)
