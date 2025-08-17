@@ -99,8 +99,7 @@ do
             ZIndex = 9999
         }})
 		
-		-- [FIXED] Use Activated for mobile compatibility
-		toggleButton.Activated:Connect(function()
+		toggleButton.MouseButton1Click:Connect(function()
             if isPotentialClick and not isWindowAnimating then
 				isWindowAnimating = true
 				isWindowOpen = not isWindowOpen
@@ -212,11 +211,9 @@ do
             end
 		end})
 
-		-- [FIXED] Improved mobile dropdown detection
 		utility:Connection({Type = uis.InputBegan, Callback = function(input)
 			if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and window.activeDropdown then
-				local target = game.Players.LocalPlayer:GetMouse().Target
-				if target and not window.activeDropdown.frame:IsAncestorOf(target) then
+				if not window.activeDropdown.frame:IsAncestorOf(input.GuiObject) then
 					window.activeDropdown:Close()
 				end
 			end
@@ -242,8 +239,7 @@ do
 			local leftHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = pageHolder, Position = UDim2.new(0, 0, 0 ,0), Size = UDim2.new(0.5, -5, 1, 0) }})
 			local rightHolder = utility:Create({Type = "Frame", Properties = { AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = pageHolder, Position = UDim2.new(1, 0, 0 ,0), Size = UDim2.new(0.5, -5, 1, 0) }})
 			
-			-- [FIXED] Use Activated for mobile compatibility
-			utility:Connection({Type = tabButton.Activated, Callback = function()
+			utility:Connection({Type = tabButton.MouseButton1Down, Callback = function()
 				if not page.Open then
 					for index, other_page in pairs(window.Pages) do
 						if other_page ~= page then other_page:Turn(false) end
@@ -296,8 +292,7 @@ do
 					local toggleFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(1, 1, 1), BorderSizePixel = 0, Parent = contentHolder, Position = UDim2.new(0, 16, 0, 2), Size = UDim2.new(0, 10, 0, 10) }})
 					local toggleInlineGradient = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = toggle.state and Color3.fromRGB(170, 85, 235) or Color3.fromRGB(63, 63, 63), BorderSizePixel = 0, Parent = toggleFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
 					utility:Create({Type = "UIGradient", Properties = { Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}), Rotation = 90, Parent = toggleInlineGradient }})
-					-- [FIXED] Use Activated for mobile compatibility
-					local connection = utility:Connection({Type = toggleButton.Activated, Callback = function() toggle:Set(not toggle.state, true) end})
+					local connection = utility:Connection({Type = toggleButton.MouseButton1Down, Callback = function() toggle:Set(not toggle.state, true) end})
 					function toggle:Remove() contentHolder:Remove(); utility:RemoveConnection({Connection = connection}); toggle = nil end
 					function toggle:Get() return toggle.state end
 					function toggle:Set(value, runCallback)
@@ -319,13 +314,16 @@ do
 					local buttonInline = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderSizePixel = 0, Parent = buttonFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
 					utility:Create({Type = "TextLabel", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(1, -32, 1, 0), Position = UDim2.new(0, 16, 0, 0), Font = "Code", RichText = true, Text = info.Name or info.name or "new button", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Center" }})
 					
+					-- [FIXED] New robust button feedback logic
 					local originalColor = buttonInline.BackgroundColor3
 					local pressedColor = Color3.new(originalColor.r * 0.7, originalColor.g * 0.7, originalColor.b * 0.7)
 					
-					-- [FIXED] Use Activated for mobile compatibility
-					local connection = utility:Connection({Type = buttonButton.Activated, Callback = function()
+					local connection = utility:Connection({Type = buttonButton.MouseButton1Down, Callback = function()
+						-- Immediately change color for feedback
 						buttonInline.BackgroundColor3 = pressedColor
+						-- Run user's function
 						button.callback()
+						-- Wait a moment then revert color
 						task.wait(0.1)
 						buttonInline.BackgroundColor3 = originalColor
 					end})
@@ -347,25 +345,9 @@ do
 					local sliderSlide = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(170, 85, 235), BorderSizePixel = 0, Parent = sliderSlideHolder, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(0.5, 0, 1, 0) }})
 					utility:Create({Type = "UIGradient", Properties = { Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(125, 125, 125))}), Rotation = 90, Parent = sliderSlide }})
 					local sliderValue = utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0.5, 0.25), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sliderSlide, Size = UDim2.new(0, 10, 0, 14), Position = UDim2.new(1, 0, 0.5, 0), Font = "Code", RichText = true, Text = tostring(slider.state) .. tostring(slider.suffix), TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
-					
-					-- [FIXED] Improved mobile slider support
-					local c1 = utility:Connection({Type = sliderButton.InputBegan, Callback = function(input)
-						if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-							slider.holding = true
-							slider:Refresh(input)
-						end
-					end})
-					local c2 = utility:Connection({Type = uis.InputEnded, Callback = function(input)
-						if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-							slider.holding = false
-						end
-					end})
-					local c3 = utility:Connection({Type = uis.InputChanged, Callback = function(input)
-						if slider.holding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-							slider:Refresh(input)
-						end
-					end})
-					
+					local c1 = utility:Connection({Type = sliderButton.MouseButton1Down, Callback = function() slider.holding = true; slider:Refresh() end})
+					local c2 = utility:Connection({Type = uis.InputEnded, Callback = function() slider.holding = false end})
+					local c3 = utility:Connection({Type = uis.InputChanged, Callback = function() if slider.holding then slider:Refresh() end end})
 					function slider:Remove() contentHolder:Remove(); utility:RemoveConnection({Connection=c1}); utility:RemoveConnection({Connection=c2}); utility:RemoveConnection({Connection=c3}); slider = nil end
 					function slider:Get() return slider.state end
 					function slider:Set(value, runCallback)
@@ -374,10 +356,10 @@ do
 						sliderValue.Text = tostring(slider.state) .. tostring(slider.suffix)
 						if runCallback then pcall(slider.callback, slider.state) end
 					end
-					function slider:Refresh(input)
+					function slider:Refresh()
 						if slider.holding then
-							local position = input and input.Position or uis:GetMouseLocation()
-							local percent = math.clamp((position.X - sliderSlideHolder.AbsolutePosition.X) / sliderSlideHolder.AbsoluteSize.X, 0, 1)
+							local mouseLocation = uis:GetMouseLocation()
+							local percent = math.clamp((mouseLocation.X - sliderSlideHolder.AbsolutePosition.X) / sliderSlideHolder.AbsoluteSize.X, 0, 1)
 							local value = slider.min + (slider.max - slider.min) * percent
 							slider:Set(value, true)
 						end
@@ -419,14 +401,14 @@ do
 						utility:Create({Type = "TextLabel", Properties = { Parent = optionButton, Size = UDim2.new(1, -10, 1, 0), Position = UDim2.new(0, 5, 0, 0), Font = "Code", Text = optionName, TextColor3 = Color3.fromRGB(180, 180, 180), TextSize = 13, TextXAlignment = "Left", BackgroundTransparency = 1 }})
 						utility:Connection({Type = optionButton.MouseEnter, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45) end})
 						utility:Connection({Type = optionButton.MouseLeave, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25) end})
+						-- [FIXED] Changed to .Activated for mobile touch compatibility
 						utility:Connection({Type = optionButton.Activated, Callback = function() dropdown:Set(optionName, true); dropdown:Close() end})
 					end
 					
 					function dropdown:Close() if not dropdown.open then return end; toggleDropdownAnim(false); window.activeDropdown = nil end
 					function dropdown:Open() if dropdown.open then return end; if window.activeDropdown then window.activeDropdown:Close() end; window.activeDropdown = dropdown; toggleDropdownAnim(true) end
 					
-					-- [FIXED] Use Activated for mobile compatibility
-					utility:Connection({Type = dropdownButton.Activated, Callback = function() if dropdown.open then dropdown:Close() else dropdown:Open() end end})
+					utility:Connection({Type = dropdownButton.MouseButton1Click, Callback = function() if dropdown.open then dropdown:Close() else dropdown:Open() end end})
 					
 					function dropdown:Get() return dropdown.state end
 					function dropdown:Set(value, runCallback)
@@ -453,7 +435,7 @@ do
 	end
 end
 
--- // [NEW] Improved Notification System with top positioning and time bar
+-- // Notification System
 function library:Notify(info)
 	if not notificationGui then
 		notificationGui = utility:Create({Type = "ScreenGui", Properties = { Parent = cre, DisplayOrder = 9999, Name = "Obelus_Notifications", ZIndexBehavior = "Global", ResetOnSpawn = false }})
@@ -471,67 +453,28 @@ function library:Notify(info)
 			local duration = currentInfo.Duration or 5
 			local color = currentInfo.Color or Color3.fromRGB(170, 85, 235)
 			
-			-- [NEW] Top-positioned notification
+			-- [CHANGED] Notification position and size
 			local notificationFrame = utility:Create({Type = "Frame", Properties = {
 				Parent = notificationGui,
-				Size = UDim2.new(0, 300, 0, 60),
-				AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.new(0.5, 0, 0, -70), -- Start off-screen (above)
+				Size = UDim2.new(0, 250, 0, 50), -- Smaller size
+				AnchorPoint = Vector2.new(1, 1), -- Anchor to bottom-right
+				Position = UDim2.new(1, -10, 1, 60), -- Start off-screen (below)
 				BackgroundColor3 = Color3.fromRGB(30, 30, 30),
 				BorderColor3 = Color3.fromRGB(10, 10, 10),
 				BorderSizePixel = 2
 			}})
-			
-			-- [NEW] Time progress bar at the top
-			local timeBar = utility:Create({Type = "Frame", Properties = { 
-				Parent = notificationFrame, 
-				Size = UDim2.new(1, 0, 0, 4), 
-				Position = UDim2.new(0, 0, 0, 0), 
-				BackgroundColor3 = color, 
-				BorderSizePixel = 0 
-			}})
-			
-			utility:Create({Type = "TextLabel", Properties = { 
-				Parent = notificationFrame, 
-				Size = UDim2.new(1, -10, 0, 18), 
-				Position = UDim2.new(0, 5, 0, 8), 
-				Font = "Code", 
-				Text = title, 
-				TextColor3 = Color3.fromRGB(255, 255, 255), 
-				TextXAlignment = "Left", 
-				BackgroundTransparency = 1, 
-				TextSize = 14 
-			}})
-			
-			utility:Create({Type = "TextLabel", Properties = { 
-				Parent = notificationFrame, 
-				Size = UDim2.new(1, -10, 1, -28), 
-				Position = UDim2.new(0, 5, 0, 28), 
-				Font = "Code", 
-				Text = text, 
-				TextColor3 = Color3.fromRGB(200, 200, 200), 
-				TextXAlignment = "Left", 
-				TextYAlignment = "Top", 
-				TextWrapped = true, 
-				BackgroundTransparency = 1, 
-				TextSize = 12 
-			}})
+			utility:Create({Type = "Frame", Properties = { Parent = notificationFrame, Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = color, BorderSizePixel = 0 }})
+			utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 0, 18), Position = UDim2.new(0, 5, 0, 4), Font = "Code", Text = title, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, TextSize = 14 }})
+			utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 1, -24), Position = UDim2.new(0, 5, 0, 24), Font = "Code", Text = text, TextColor3 = Color3.fromRGB(200, 200, 200), TextXAlignment = "Left", TextYAlignment = "Top", TextWrapped = true, BackgroundTransparency = 1, TextSize = 12 }})
 			
 			local animInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-			local animIn = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, 10)})
-			local animOut = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, -70)})
-			
-			-- [NEW] Time bar animation
-			local timeBarAnimInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-			local timeBarAnim = ts:Create(timeBar, timeBarAnimInfo, {Size = UDim2.new(0, 0, 0, 4)})
+			-- [CHANGED] Animation goals for bottom-right positioning
+			local animIn = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(1, -10, 1, -10)})
+			local animOut = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(1, -10, 1, 60)})
 			
 			animIn:Play()
 			animIn.Completed:Wait()
-			
-			-- Start time bar countdown
-			timeBarAnim:Play()
 			task.wait(duration)
-			
 			animOut:Play()
 			animOut.Completed:Wait()
 			notificationFrame:Destroy()
