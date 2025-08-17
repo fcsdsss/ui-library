@@ -1,18 +1,19 @@
 if not getgenv().ObelusLibrary then
-	local LibraryURL = "https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/Obelus/ui%20lib/source.lua"
+	local LibraryURL = "https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/Obelus/ui%20lib/source.lua" -- 假设这个URL指向最新的代码
 	local success, result = pcall(function() return loadstring(game:HttpGet(LibraryURL))() end)
 	if success and result and type(result) == "table" then getgenv().ObelusLibrary = result else warn("Obelus UI Library could not be loaded.", result) return end
 end
 
 local Obelus = getgenv().ObelusLibrary
 
-local window = Obelus:Window({ name = "<font color='#AA55EB'>My Awesome Script</font> | v4.0" })
+local window = Obelus:Window({ name = "<font color='#FFFFFF'>My Awesome Script</font> | v4.0" })
 
 local combatPage = window:Page({Name = "Combat"})
 local visualsPage = window:Page({Name = "Visuals"})
 local playerPage = window:Page({Name = "Player"})
 local miscPage = window:Page({Name = "Misc"})
 
+-- --------- [ Combat 页面 ] ---------
 local combatSectionLeft = combatPage:Section({Name = "General", Side = "Left", size = 280})
 
 combatSectionLeft:Label({Name = "Main combat features:"})
@@ -26,13 +27,13 @@ local targetPartDropdown = combatSectionLeft:Dropdown({
 		Obelus:Notify({
 			Title = "Target Part Changed",
 			Text = "Now targeting player " .. selectedOption .. ".",
-			Color = Color3.fromRGB(0, 170, 255)
+			Color = Color3.fromRGB(0, 170, 255) -- 你仍然可以为特定通知自定义颜色
 		})
 	end
 })
 
-combatSectionLeft:Button({Name = "Test Click Feedback", Callback = function()
-	print("Button click feedback works!")
+combatSectionLeft:Button({Name = "Test Notification", Callback = function()
+	Obelus:Notify({Title = "Test", Text = "This is a test notification."})
 end})
 
 local combatSectionRight = combatPage:Section({Name = "Aim Assist Settings", Side = "Right", size = 280})
@@ -59,6 +60,7 @@ combatSectionRight:Slider({
 })
 
 
+-- --------- [ Visuals 页面 ] ---------
 local espSection = visualsPage:Section({Name = "Player ESP", Side = "Left", size = 280})
 espSection:Toggle({Name = "Box ESP", Default = true})
 espSection:Toggle({Name = "Name ESP"})
@@ -75,18 +77,16 @@ local espDistanceSlider = espSection:Slider({
 	Maximum = 2000,
 	Default = 300,
 	Decimals = 0.02,
-	Suffix = "m",
-	Callback = function(value)
-		print("Max ESP distance set to:", value .. "m")
-	end
+	Suffix = "m"
 })
 
 
+-- --------- [ Player 页面 ] ---------
 local playerSection = playerPage:Section({Name = "Movement", Side = "Left", size = 280})
 
 local walkspeedSlider = playerSection:Slider({
 	Name = "WalkSpeed",
-	Minimum = 16,  -- 默认速度
+	Minimum = 16,
 	Maximum = 150,
 	Default = 16,
 	Decimals = 1
@@ -101,6 +101,7 @@ local jumpPowerSlider = playerSection:Slider({
 })
 
 
+-- --------- [ Misc 页面 ] ---------
 local miscSection = miscPage:Section({Name = "Miscellaneous", Side = "Left", size = 280})
 miscSection:Label({Name = "Other settings and info."})
 miscSection:Toggle({Name = "Streamer Mode (Hides UI)", Default = false})
@@ -110,7 +111,7 @@ miscSection:Button({Name = "Reset All Settings", Callback = function()
 	smoothnessSlider:Set(25)
 	walkspeedSlider:Set(16)
 	targetPartDropdown:Set("Head")
-	Obelus:Notify({Title = "Settings Reset", Text = "All values have been restored to default."})
+	Obelus:Notify({Title = "Settings Reset", Text = "All values restored to default."})
 end})
 
 
@@ -122,19 +123,3 @@ Obelus:Notify({
 	Text = "Welcome! Obelus v4.0 is active.",
 	Duration = 6
 })
-
-task.wait(10)
-local currentTarget = targetPartDropdown:Get()
-print("Current target part after 10s is:", currentTarget)
-
-task.wait(5)
-local currentSmoothness = smoothnessSlider:Get()
-print(string.format("Current smoothness after 15s is: %d%%", currentSmoothness))
-
-Obelus:Notify({
-    Title = "Code Interaction",
-    Text = "Setting smoothness to 75% via script...",
-    Duration = 4
-})
-smoothnessSlider:Set(75)
-print("Smoothness has been set to 75% by the script.")
