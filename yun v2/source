@@ -186,23 +186,71 @@ function initLibrary()
     local gui = utility.create("ScreenGui")
 
 
-    -- **MODIFIED: Added mobile toggle button**
+    -- **ENHANCED: Added a draggable and better-looking mobile toggle button**
     if inputService.TouchEnabled and not inputService.MouseEnabled then
+        -- 创建一个更美观的文本按钮
         local mobileToggle = utility.create("TextButton", {
             Name = "MobileToggle",
             Text = "UI",
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-            BorderColor3 = Color3.fromRGB(50, 50, 50),
-            BorderSizePixel = 1,
-            Size = UDim2.new(0, 80, 0, 40),
-            Position = UDim2.new(0, 10, 0.5, -20),
-            Font = Enum.Font.SourceSansBold,
+            TextColor3 = Color3.fromRGB(225, 225, 225),
+            Font = Enum.Font.GothamSemibold,
             TextSize = 18,
+            BackgroundColor3 = Color3.fromRGB(35, 35, 35), -- 深色背景
+            BorderSizePixel = 0,
+            Size = UDim2.new(0, 50, 0, 50), -- 方形按钮
+            Position = UDim2.new(0, 15, 0.5, -25), -- 初始位置在屏幕左侧中间
+            ZIndex = 10, -- 确保它在最上层
             Parent = gui
         })
 
 
+        -- 添加圆角
+        utility.create("UICorner", {
+            CornerRadius = UDim.new(0, 8),
+            Parent = mobileToggle
+        })
+
+
+        -- 添加背景渐变，增加深度感
+        utility.create("UIGradient", {
+            Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 45, 45)), -- 顶部颜色稍亮
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30))  -- 底部颜色稍暗
+            }),
+            Rotation = 90, -- 从上到下的渐变
+            Parent = mobileToggle
+        })
+
+
+        -- 添加描边，让边界更清晰
+        utility.create("UIStroke", {
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            Color = Color3.fromRGB(60, 60, 60),
+            Thickness = 1.5,
+            Parent = mobileToggle
+        })
+
+
+        -- 添加简单的点击动画反馈
+        mobileToggle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                utility.tween(mobileToggle, {0.1}, {Size = UDim2.new(0, 45, 0, 45)})
+            end
+        end)
+
+
+        mobileToggle.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                utility.tween(mobileToggle, {0.1}, {Size = UDim2.new(0, 50, 0, 50)})
+            end
+        end)
+
+
+        -- [新功能] 让这个按钮可以被拖拽
+        utility.drag(mobileToggle, 0.1)
+
+
+        -- 按钮的核心功能：切换UI的显示和隐藏
         mobileToggle.MouseButton1Click:Connect(function()
             library.toggled = not library.toggled
             for _, child in ipairs(gui:GetChildren()) do
@@ -213,15 +261,15 @@ function initLibrary()
         end)
 
 
-        -- Hide the main UI by default on mobile
+        -- 默认在移动端隐藏主UI
         library.toggled = false
     end
 
 
+    -- PC keybind logic
     inputService.InputBegan:Connect(function(input)
         if input.KeyCode == library.keybind then
             library.toggled = not library.toggled
-            -- Toggle visibility of all UI elements except the mobile toggle button
             for _, child in ipairs(gui:GetChildren()) do
                 if child.Name ~= "MobileToggle" then
                     child.Visible = library.toggled
@@ -381,8 +429,7 @@ function initLibrary()
             BorderSizePixel = 0,
             BackgroundColor3 = Color3.fromRGB(22, 22, 22),
             Parent = gui,
-            -- **MODIFIED: Set initial visibility based on mobile or not**
-            Visible = library.toggled
+            Visible = library.toggled -- Sets initial visibility
         })
 
 
@@ -450,17 +497,11 @@ function initLibrary()
 
         function windowTypes:Show()
             gui.Enabled = true
-            -- Also handle the main frame's visibility
-            topbar.Visible = true
-            library.toggled = true
         end
 
 
         function windowTypes:Hide()
             gui.Enabled = false
-            -- Also handle the main frame's visibility
-            topbar.Visible = false
-            library.toggled = false
         end
 
 
@@ -779,7 +820,7 @@ function initLibrary()
                     utility.create("UIGradient", {
                         Rotation = 90,
                         Color = ColorSequence.new{
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)),
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)), 
                             ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 17, 17))
                         },
                         Parent = button
@@ -832,7 +873,7 @@ function initLibrary()
                 function sectionTypes:Toggle(opts)
                     local options = utility.table(opts)
                     local name = options.name or "Toggle"
-                    local flag = options.flag
+                    local flag = options.flag 
                     local callback = options.callback or function() end
 
 
@@ -868,7 +909,7 @@ function initLibrary()
                     local iconGradient = utility.create("UIGradient", {
                         Rotation = 90,
                         Color = ColorSequence.new{
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)),
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)), 
                             ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 17, 17))
                         },
                         Parent = icon
@@ -905,12 +946,12 @@ function initLibrary()
                         local gradientColor
                         if toggled then
                             gradientColor = ColorSequence.new{
-                                ColorSequenceKeypoint.new(0, library.color),
+                                ColorSequenceKeypoint.new(0, library.color), 
                                 ColorSequenceKeypoint.new(1, utility.change_color(library.color, -47))
                             }
                         else
                             gradientColor = ColorSequence.new{
-                                ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)),
+                                ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)), 
                                 ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 17, 17))
                             }
                         end
@@ -1201,7 +1242,7 @@ function initLibrary()
                     local fillGradient = utility.create("UIGradient", {
                         Rotation = 90,
                         Color = ColorSequence.new{
-                            ColorSequenceKeypoint.new(0, library.color),
+                            ColorSequenceKeypoint.new(0, library.color), 
                             ColorSequenceKeypoint.new(1, utility.change_color(library.color, -47))
                         },
                         Parent = fill
@@ -1213,7 +1254,7 @@ function initLibrary()
                     utility.create("UIGradient", {
                         Rotation = 90,
                         Color = ColorSequence.new{
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)),
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)), 
                             ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 17, 17))
                         },
                         Parent = slider
@@ -1243,7 +1284,7 @@ function initLibrary()
                         title.Text = valueText:gsub("%[VALUE%]", tostring(value))
 
 
-                        if flag then
+                        if flag then 
                             library.flags[flag] = value
                         end
 
@@ -1300,7 +1341,7 @@ function initLibrary()
                         value = num
                         fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
                         
-                        if flag then
+                        if flag then 
                             library.flags[flag] = value
                         end
 
@@ -1315,7 +1356,7 @@ function initLibrary()
                         fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
 
 
-                        if flag then
+                        if flag then 
                             library.flags[flag] = value
                         end
 
@@ -1330,7 +1371,7 @@ function initLibrary()
                         fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
 
 
-                        if flag then
+                        if flag then 
                             library.flags[flag] = value
                         end
 
@@ -1415,7 +1456,7 @@ function initLibrary()
                     local fillGradient = utility.create("UIGradient", {
                         Rotation = 90,
                         Color = ColorSequence.new{
-                            ColorSequenceKeypoint.new(0, library.color),
+                            ColorSequenceKeypoint.new(0, library.color), 
                             ColorSequenceKeypoint.new(1, utility.change_color(library.color, -47))
                         },
                         Parent = fill
@@ -1468,7 +1509,7 @@ function initLibrary()
                     local iconGradient = utility.create("UIGradient", {
                         Rotation = 90,
                         Color = ColorSequence.new{
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)),
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)), 
                             ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 17, 17))
                         },
                         Parent = icon
@@ -1505,12 +1546,12 @@ function initLibrary()
                         local gradientColor
                         if toggled then
                             gradientColor = ColorSequence.new{
-                                ColorSequenceKeypoint.new(0, library.color),
+                                ColorSequenceKeypoint.new(0, library.color), 
                                 ColorSequenceKeypoint.new(1, utility.change_color(library.color, -47))
                             }
                         else
                             gradientColor = ColorSequence.new{
-                                ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)),
+                                ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)), 
                                 ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 17, 17))
                             }
                         end
@@ -1541,7 +1582,7 @@ function initLibrary()
                         title.Text = valueText:gsub("%[VALUE%]", tostring(value))
 
 
-                        if sliderFlag then
+                        if sliderFlag then 
                             library.flags[sliderFlag] = value
                         end
 
@@ -1599,7 +1640,7 @@ function initLibrary()
                         fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
                         title.Text = valueText:gsub("%[VALUE%]", tostring(value))
                         
-                        if sliderFlag then
+                        if sliderFlag then 
                             library.flags[sliderFlag] = value
                         end
 
@@ -1615,7 +1656,7 @@ function initLibrary()
                         title.Text = valueText:gsub("%[VALUE%]", tostring(value))
 
 
-                        if sliderFlag then
+                        if sliderFlag then 
                             library.flags[sliderFlag] = value
                         end
 
@@ -1631,7 +1672,7 @@ function initLibrary()
                         title.Text = valueText:gsub("%[VALUE%]", tostring(value))
 
 
-                        if sliderFlag then
+                        if sliderFlag then 
                             library.flags[sliderFlag] = value
                         end
 
@@ -2624,12 +2665,12 @@ function initLibrary()
                         local gradientColor
                         if toggled then
                             gradientColor = ColorSequence.new{
-                                ColorSequenceKeypoint.new(0, library.color),
+                                ColorSequenceKeypoint.new(0, library.color), 
                                 ColorSequenceKeypoint.new(1, utility.change_color(library.color, -47))
                             }
                         else
                             gradientColor = ColorSequence.new{
-                                ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)),
+                                ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)), 
                                 ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 17, 17))
                             }
                         end
@@ -3014,7 +3055,7 @@ function initLibrary()
                         icon.BackgroundColor3 = hsv
 
 
-                        if flag then
+                        if flag then 
                             library.flags[flag] = Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255)
                         end
 
@@ -3072,7 +3113,7 @@ function initLibrary()
                         icon.BackgroundColor3 = hsv
 
 
-                        if flag then
+                        if flag then 
                             library.flags[flag] = Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255)
                         end
 
@@ -3136,7 +3177,7 @@ function initLibrary()
                         hex.Text = utility.rgb_to_hex(Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255))
 
 
-                        if flag then
+                        if flag then 
                             library.flags[flag] = Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255)
                         end
 
@@ -3162,7 +3203,7 @@ function initLibrary()
                         hex.Text = utility.rgb_to_hex(Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255))
 
 
-                        if flag then
+                        if flag then 
                             library.flags[flag] = Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255)
                         end
 
@@ -3449,12 +3490,12 @@ function initLibrary()
                         local gradientColor
                         if toggled then
                             gradientColor = ColorSequence.new{
-                                ColorSequenceKeypoint.new(0, library.color),
+                                ColorSequenceKeypoint.new(0, library.color), 
                                 ColorSequenceKeypoint.new(1, utility.change_color(library.color, -47))
                             }
                         else
                             gradientColor = ColorSequence.new{
-                                ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)),
+                                ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 32, 32)), 
                                 ColorSequenceKeypoint.new(1, Color3.fromRGB(17, 17, 17))
                             }
                         end
@@ -3498,7 +3539,7 @@ function initLibrary()
                         saturationFrame.BackgroundColor3 = hsv
                         colorPickerIcon.BackgroundColor3 = hsv
                     
-                        if colorPickerFlag then
+                        if colorPickerFlag then 
                             library.flags[colorPickerFlag] = Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255)
                         end
                     
@@ -3545,7 +3586,7 @@ function initLibrary()
                         saturationFrame.BackgroundColor3 = hsv
                         colorPickerIcon.BackgroundColor3 = hsv
                     
-                        if colorPickerFlag then
+                        if colorPickerFlag then 
                             library.flags[colorPickerFlag] = Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255)
                         end
                     
@@ -3606,7 +3647,7 @@ function initLibrary()
                         rgb.Text = math.floor((hsv.r * 255) + 0.5) .. ", " .. math.floor((hsv.g * 255) + 0.5) .. ", " .. math.floor((hsv.b * 255) + 0.5)
                         hex.Text = utility.rgb_to_hex(Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255))
                     
-                        if colorPickerFlag then
+                        if colorPickerFlag then 
                             library.flags[colorPickerFlag] = Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255)
                         end
                     
@@ -3627,7 +3668,7 @@ function initLibrary()
                         rgb.Text = math.floor((hsv.r * 255) + 0.5) .. ", " .. math.floor((hsv.g * 255) + 0.5) .. ", " .. math.floor((hsv.b * 255) + 0.5)
                         hex.Text = utility.rgb_to_hex(Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255))
                     
-                        if colorPickerFlag then
+                        if colorPickerFlag then 
                             library.flags[colorPickerFlag] = Color3.fromRGB(hsv.r * 255, hsv.g * 255, hsv.b * 255)
                         end
                     
