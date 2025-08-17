@@ -8,7 +8,6 @@ local obelus = {
 local ts = game:GetService("TweenService")
 local uis = game:GetService("UserInputService")
 local cre = game:GetService("CoreGui")
-local soundService = game:GetService("SoundService") -- Ajouté pour les notifications
 -- // Indexing
 library.__index = library
 
@@ -17,7 +16,7 @@ local notificationQueue = {}
 local isNotifying = false
 local notificationGui
 
--- // Fonctions
+-- // Functions
 do
     function utility:Create(createInfo)
         local createInfo = createInfo or {}
@@ -214,7 +213,9 @@ do
 
         utility:Connection({Type = uis.InputBegan, Callback = function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and window.activeDropdown then
-                if not window.activeDropdown.Menu.Visible or (not window.activeDropdown.Menu:IsAncestorOf(input.GuiObject) and not window.activeDropdown.Holder:IsAncestorOf(input.GuiObject)) then
+                -- LinoriaLib 的下拉框 frame 是其弹出列表本身
+                -- Obelus 的 :IsAncestorOf 检查点击是否在弹出列表内部
+                if not window.activeDropdown.frame:IsAncestorOf(input.GuiObject) then
                     window.activeDropdown:Close()
                 end
             end
@@ -364,197 +365,139 @@ do
                     slider:Set(slider.state)
                     return slider
                 end
-
-                --- [ NOUVELLE FONCTION DROPDOWN - Remplacée par le style Obsidian ] ---
+                
+                --- [ NEW DROPDOWN FUNCTION - Re-engineered to mimic LinoriaLib ] ---
                 function section:Dropdown(dropdownInfo)
                     local info = dropdownInfo or {}
-                    local dropdown = {
-                        Text = info.Name or info.name or "Dropdown",
-                        Value = info.Default or nil,
-                        Values = info.Options or {},
-                        Callback = info.Callback or function() end,
-                        open = false
-                    }
+                    local options = info.Options or {}
+                    local dropdown = { state = info.Default or options[1], callback = info.Callback or function() end, open = false }
 
-                    local contentHolder = utility:Create({Type = "Frame", Properties = {
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, dropdown.Text and 39 or 21),
-                        Visible = true,
-                        Parent = sectionContentHolder,
-                        LayoutOrder = info.Order or 0
-                    }})
-
-                    local label = utility:Create({Type = "TextLabel", Properties = {
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 14),
-                        Text = dropdown.Text,
-                        Font = "Code",
-                        TextSize = 14,
-                        TextColor3 = Color3.fromRGB(255, 255, 255),
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                        Visible = not not dropdown.Text,
-                        Parent = contentHolder
-                    }})
-
-                    local display = utility:Create({Type = "TextButton", Properties = {
-                        Active = true,
-                        AnchorPoint = Vector2.new(0, 1),
-                        BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-                        BorderColor3 = Color3.fromRGB(40, 40, 40),
-                        BorderSizePixel = 1,
-                        Position = UDim2.fromScale(0, 1),
-                        Size = UDim2.new(1, 0, 0, 21),
-                        Text = "---",
-                        Font = "Code",
-                        TextSize = 14,
-                        TextColor3 = Color3.fromRGB(255, 255, 255),
-                        TextXAlignment = Enum.TextXAlignment.Left,
-                        Parent = contentHolder
-                    }})
+                    -- Part 1: Create the visible button inside the section
+                    local contentHolder = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionContentHolder, Size = UDim2.new(1, 0, 0, 20), LayoutOrder = info.Order or 0 }})
+                    utility:Create({Type = "TextLabel", Properties = { AnchorPoint = Vector2.new(0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(0.5, -20, 1, 0), Position = UDim2.new(0, 16, 0, 0), Font = "Code", RichText = true, Text = info.Name or "Dropdown", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
                     
-                    utility:Create({Type = "UIPadding", Properties = {
-                        PaddingLeft = UDim.new(0, 8),
-                        PaddingRight = UDim.new(0, 4),
-                        Parent = display
-                    }})
-
-                    local arrowImage = utility:Create({Type = "ImageLabel", Properties = {
-                        AnchorPoint = Vector2.new(1, 0.5),
-                        Image = "rbxassetid://13420234828", -- Chevron-up icon
-                        ImageColor3 = Color3.fromRGB(255, 255, 255),
-                        ImageTransparency = 0.5,
-                        Position = UDim2.fromScale(1, 0.5),
-                        Rotation = 0,
-                        Size = UDim2.fromOffset(16, 16),
-                        Parent = display,
-                        BackgroundTransparency = 1
-                    }})
+                    local dropdownButtonOuter = utility:Create({Type = "Frame", Properties = { BackgroundTransparency = 1, Parent = contentHolder, Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.5, -16, 1, 0) }})
+                    local dropdownButton = utility:Create({Type = "TextButton", Properties = { BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderColor3 = Color3.fromRGB(1,1,1), BorderMode="Inset", BorderSizePixel=1, Parent = dropdownButtonOuter, Size = UDim2.new(1, 0, 1, 0), Text = "" }})
+                    utility:Create({Type="UIGradient", Properties = {Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(212, 212, 212))}), Rotation = 90, Parent = dropdownButton}})
                     
-                    local menu = utility:Create({Type = "ScrollingFrame", Properties = {
-                        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-                        BackgroundColor3 = Color3.fromRGB(15, 15, 15),
-                        BorderColor3 = Color3.fromRGB(40, 40, 40),
-                        BorderSizePixel = 1,
-                        ScrollBarImageColor3 = Color3.fromRGB(40, 40, 40),
-                        ScrollBarThickness = 2,
+                    local dropdownValue = utility:Create({Type = "TextLabel", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = dropdownButton, Size = UDim2.new(1, -15, 1, 0), Position = UDim2.new(0, 5, 0, 0), Font = "Code", RichText = true, Text = dropdown.state or "--", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Left" }})
+                    local dropdownArrow = utility:Create({Type = "ImageLabel", Properties = { BackgroundTransparency = 1, Image = "http://www.roblox.com/asset/?id=6282522798", Parent = dropdownButton, Size = UDim2.new(0, 12, 0, 12), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(1, -16, 0.5, 0) }})
+
+                    -- Part 2: Create the popup list that will appear on top of everything
+                    local MAX_DROPDOWN_ITEMS = 8
+                    local listOuter = utility:Create({Type = "Frame", Properties = {
+                        Parent = screen, -- Parent to the main ScreenGui to avoid clipping
                         Visible = false,
-                        ZIndex = 9998,
-                        Parent = screen
+                        BackgroundColor3 = Color3.fromRGB(1, 1, 1),
+                        BorderSizePixel = 1,
+                        ZIndex = 9998
                     }})
-                    
-                    utility:Create({Type = "UIListLayout", Properties = { Parent = menu }})
-                    
-                    local optionButtons = {}
+                    local listInner = utility:Create({Type = "Frame", Properties = {
+                        Parent = listOuter,
+                        BackgroundColor3 = Color3.fromRGB(45, 45, 45), -- Darker background like Linoria
+                        BorderColor3 = Color3.fromRGB(1, 1, 1),
+                        BorderMode = "Inset",
+                        Size = UDim2.new(1, 0, 1, 0),
+                        ZIndex = 9999
+                    }})
+                    local scrollingFrame = utility:Create({Type = "ScrollingFrame", Properties = {
+                        Parent = listInner,
+                        BackgroundTransparency = 1,
+                        BorderSizePixel = 0,
+                        Size = UDim2.new(1, 0, 1, 0),
+                        AutomaticCanvasSize = "Y",
+                        ScrollBarThickness = 3,
+                        ScrollBarImageColor3 = Color3.fromRGB(170, 85, 235)
+                    }})
+                    utility:Create({Type = "UIListLayout", Properties = { Parent = scrollingFrame }})
 
-                    function dropdown:BuildList()
-                        for _, btn in pairs(optionButtons) do btn:Destroy() end
-                        table.clear(optionButtons)
-
-                        for _, optionName in ipairs(dropdown.Values) do
-                            local optionButton = utility:Create({Type = "TextButton", Properties = {
-                                BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-                                BackgroundTransparency = 1,
-                                Size = UDim2.new(1, 0, 0, 21),
-                                Text = tostring(optionName),
-                                Font = "Code",
-                                TextSize = 14,
-                                TextColor3 = Color3.fromRGB(255, 255, 255),
-                                TextTransparency = 0.5,
-                                TextXAlignment = Enum.TextXAlignment.Left,
-                                Parent = menu,
-                                AutoButtonColor = false
-                            }})
-
-                            utility:Create({Type = "UIPadding", Properties = {
-                                PaddingLeft = UDim.new(0, 7),
-                                PaddingRight = UDim.new(0, 7),
-                                Parent = optionButton
-                            }})
-
-                            local function updateButtonVisuals()
-                                local selected = (dropdown.Value == optionName)
-                                optionButton.BackgroundTransparency = selected and 0 or 1
-                                optionButton.TextTransparency = selected and 0 or 0.5
-                            end
-                            
-                            utility:Connection({Type = optionButton.MouseButton1Click, Callback = function()
-                                dropdown:Set(optionName, true)
-                                dropdown:Close()
-                            end})
-
-                            table.insert(optionButtons, {Button = optionButton, Update = updateButtonVisuals})
-                            updateButtonVisuals()
-                        end
-                    end
-                    
-                    function dropdown:UpdateDisplay()
-                        local str = dropdown.Value and tostring(dropdown.Value) or ""
-                        if #str > 25 then str = str:sub(1, 22) .. "..." end
-                        display.Text = (str == "" and "---" or str)
-                    end
-                    
+                    -- Part 3: Define the open/close/update logic
                     function dropdown:Close()
                         if not dropdown.open then return end
                         dropdown.open = false
-                        menu.Visible = false
-                        arrowImage.Rotation = 0
-                        arrowImage.ImageTransparency = 0.5
+                        dropdownArrow.Rotation = 0
+                        listOuter.Visible = false
                         window.activeDropdown = nil
                     end
-
+                    
                     function dropdown:Open()
                         if dropdown.open then return end
                         if window.activeDropdown then window.activeDropdown:Close() end
-
+                        
                         dropdown.open = true
-                        dropdown:BuildList()
+                        dropdownArrow.Rotation = 180
                         
-                        local maxItems = 8
-                        local ySize = math.min(#dropdown.Values * 21, maxItems * 21)
+                        -- Dynamically calculate position and size
+                        local buttonAbsPos = dropdownButtonOuter.AbsolutePosition
+                        local buttonAbsSize = dropdownButtonOuter.AbsoluteSize
+                        local listHeight = math.min(#options * 20, MAX_DROPDOWN_ITEMS * 20) + 2
                         
-                        menu.Position = UDim2.fromOffset(display.AbsolutePosition.X + 0.5, display.AbsolutePosition.Y + display.AbsoluteSize.Y + 1.5)
-                        menu.Size = UDim2.fromOffset(display.AbsoluteSize.X, ySize)
-                        menu.Visible = true
-                        
-                        arrowImage.Rotation = 180
-                        arrowImage.ImageTransparency = 0
+                        listOuter.Size = UDim2.fromOffset(buttonAbsSize.X, listHeight)
+                        listOuter.Position = UDim2.fromOffset(buttonAbsPos.X, buttonAbsPos.Y + buttonAbsSize.Y)
+                        listOuter.Visible = true
                         
                         window.activeDropdown = dropdown
                     end
-                    
-                    utility:Connection({Type = display.MouseButton1Click, Callback = function()
-                        if dropdown.open then dropdown:Close() else dropdown:Open() end
+
+                    -- Part 4: Populate the list with options
+                    for _, optionName in ipairs(options) do
+                        local optionButton = utility:Create({Type = "TextButton", Properties = {
+                            Parent = scrollingFrame,
+                            Size = UDim2.new(1, 0, 0, 20),
+                            Text = "",
+                            BackgroundColor3 = Color3.fromRGB(45, 45, 45),
+                            AutoButtonColor = false
+                        }})
+                        local optionLabel = utility:Create({Type = "TextLabel", Properties = {
+                            Parent = optionButton,
+                            Size = UDim2.new(1, -10, 1, 0),
+                            Position = UDim2.new(0, 5, 0, 0),
+                            Font = "Code",
+                            Text = optionName,
+                            TextColor3 = Color3.fromRGB(180, 180, 180),
+                            TextSize = 13,
+                            TextXAlignment = "Left",
+                            BackgroundTransparency = 1
+                        }})
+
+                        utility:Connection({Type = optionButton.MouseEnter, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60) end})
+                        utility:Connection({Type = optionButton.MouseLeave, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45) end})
+                        
+                        utility:Connection({Type = optionButton.InputBegan, Callback = function(input)
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                                dropdown:Set(optionName, true)
+                                dropdown:Close()
+                            end
+                        end})
+                    end
+
+                    -- Part 5: Connect events and define public methods
+                    utility:Connection({Type = dropdownButton.InputBegan, Callback = function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                            if dropdown.open then dropdown:Close() else dropdown:Open() end
+                        end
                     end})
 
-                    function dropdown:Get() return dropdown.Value end
+                    function dropdown:Get() return dropdown.state end
                     function dropdown:Set(value, runCallback)
-                        if table.find(dropdown.Values, value) or value == nil then
-                            dropdown.Value = value
-                            dropdown:UpdateDisplay()
-                            
-                            for _, btnInfo in pairs(optionButtons) do
-                                btnInfo.Update()
-                            end
-
-                            if runCallback then pcall(dropdown.Callback, dropdown.Value) end
+                        if table.find(options, value) then
+                            dropdown.state = value
+                            dropdownValue.Text = value
+                            if runCallback then pcall(dropdown.callback, dropdown.state) end
                         end
                     end
-
                     function dropdown:Remove()
                         contentHolder:Destroy()
-                        menu:Destroy()
+                        listOuter:Destroy() -- Also destroy the popup list
                         dropdown = nil
                     end
-
-                    -- Pour la fonctionnalité "cliquer à l'extérieur pour fermer"
-                    dropdown.Menu = menu
-                    dropdown.Holder = display
-
-                    dropdown:Set(dropdown.Value, false) -- Définir la valeur initiale
                     
+                    -- This is crucial for the "click outside to close" functionality
+                    dropdown.frame = listOuter
+
                     return dropdown
                 end
-                
+
                 return section
             end
             
@@ -567,165 +510,58 @@ do
     end
 end
 
--- // [NOUVEAU SYSTÈME DE NOTIFICATION - Remplacé par le style Obsidian]
+-- // Notification System
 function library:Notify(info)
-    info = info or {}
-    local data = {
-        Title = info.Title,
-        Description = info.Text or info.Description or "",
-        Time = info.Duration or 5,
-        SoundId = info.SoundId,
-        Persist = info.Persist,
-        Destroyed = false
-    }
-
     if not notificationGui then
         notificationGui = utility:Create({Type = "ScreenGui", Properties = { Parent = cre, DisplayOrder = 9999, Name = "Obelus_Notifications", ZIndexBehavior = "Global", ResetOnSpawn = false }})
-        utility:Create({Type = "UIListLayout", Properties = {
-            Parent = notificationGui,
-            HorizontalAlignment = Enum.HorizontalAlignment.Right,
-            Padding = UDim.new(0, 6)
-        }})
-        notificationGui.AnchorPoint = Vector2.new(1, 0)
-        notificationGui.Position = UDim2.new(1, -6, 0, 6)
-        notificationGui.Size = UDim2.new(0, 300, 1, -6)
     end
+    table.insert(notificationQueue, info)
     
-    local fakeBackground = utility:Create({Type = "Frame", Properties = {
-        AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundTransparency = 1,
-        Size = UDim2.fromScale(1, 0),
-        Visible = false,
-        Parent = notificationGui,
-    }})
-
-    -- Fonction 'MakeOutline' recréée
-    local background
-    do
-        local holder = utility:Create({Type = "Frame", Properties = {
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-            Position = UDim2.fromOffset(-2, -2),
-            Size = UDim2.new(1, 4, 1, 4),
-            ZIndex = 5,
-            Parent = fakeBackground
-        }})
-        utility:Create({Type = "UICorner", Properties = { CornerRadius = UDim.new(0, 4 + 1), Parent = holder }})
+    coroutine.wrap(function()
+        if isNotifying then return end
+        isNotifying = true
         
-        background = utility:Create({Type = "Frame", Properties = {
-            BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-            Position = UDim2.fromOffset(1, 1),
-            Size = UDim2.new(1, -2, 1, -2),
-            ZIndex = 5,
-            Parent = holder
-        }})
-        utility:Create({Type = "UICorner", Properties = { CornerRadius = UDim.new(0, 4), Parent = background }})
-        background.AutomaticSize = Enum.AutomaticSize.Y
-        background.Position = UDim2.new(1, 6, 0, -2)
-        background.Size = UDim2.fromScale(1, 0)
-    end
-    
-    local holder = utility:Create({Type = "Frame", Properties = {
-        BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-        Position = UDim2.fromOffset(2, 2),
-        Size = UDim2.new(1, -4, 1, -4),
-        Parent = background
-    }})
-    utility:Create({Type = "UICorner", Properties = { CornerRadius = UDim.new(0, 4 - 1), Parent = holder }})
-    utility:Create({Type = "UIListLayout", Properties = { Padding = UDim.new(0, 4), Parent = holder }})
-    utility:Create({Type = "UIPadding", Properties = {
-        PaddingBottom = UDim.new(0, 8),
-        PaddingLeft = UDim.new(0, 8),
-        PaddingRight = UDim.new(0, 8),
-        PaddingTop = UDim.new(0, 8),
-        Parent = holder
-    }})
-    
-    if data.Title then
-        utility:Create({Type = "TextLabel", Properties = {
-            BackgroundTransparency = 1,
-            Text = data.Title,
-            Font = "Code",
-            TextSize = 15,
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextWrapped = true,
-            AutomaticSize = "Y",
-            Size = UDim2.new(1,0,0,0),
-            Parent = holder,
-        }})
-    end
-
-    if data.Description then
-        utility:Create({Type = "TextLabel", Properties = {
-            BackgroundTransparency = 1,
-            Text = data.Description,
-            Font = "Code",
-            TextSize = 14,
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextWrapped = true,
-            AutomaticSize = "Y",
-            Size = UDim2.new(1,0,0,0),
-            Parent = holder,
-        }})
-    end
-    
-    local timerHolder = utility:Create({Type = "Frame", Properties = {
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 7),
-        Visible = not data.Persist,
-        Parent = holder,
-    }})
-    local timerBar = utility:Create({Type = "Frame", Properties = {
-        BackgroundColor3 = Color3.fromRGB(15, 15, 15),
-        BorderColor3 = Color3.fromRGB(40, 40, 40),
-        BorderSizePixel = 1,
-        Position = UDim2.fromOffset(0, 3),
-        Size = UDim2.new(1, 0, 0, 2),
-        Parent = timerHolder,
-    }})
-    local timerFill = utility:Create({Type = "Frame", Properties = {
-        BackgroundColor3 = Color3.fromRGB(125, 85, 255),
-        Size = UDim2.fromScale(1, 1),
-        Parent = timerBar,
-    }})
-    
-    function data:Destroy()
-        if data.Destroyed then return end
-        data.Destroyed = true
-        
-        local tweenOut = ts:Create(background, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, 6, 0, -2)})
-        tweenOut:Play()
-        tweenOut.Completed:Connect(function()
-            fakeBackground:Destroy()
-        end)
-    end
-    
-    if data.SoundId then
-        local soundIdStr = (typeof(data.SoundId) == "number") and `rbxassetid://{data.SoundId}` or data.SoundId
-        utility:Create({Type = "Sound", Properties = {
-            SoundId = soundIdStr,
-            Volume = 3,
-            PlayOnRemove = true,
-            Parent = soundService,
-        }}):Destroy()
-    end
-    
-    fakeBackground.Visible = true
-    local tweenIn = ts:Create(background, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.fromOffset(-2, -2)})
-    tweenIn:Play()
-
-    task.delay(0.25, function()
-        if not data.Persist then
-            local timerTween = ts:Create(timerFill, TweenInfo.new(data.Time, Enum.EasingStyle.Linear), {Size = UDim2.fromScale(0, 1)})
+        while #notificationQueue > 0 do
+            local currentInfo = table.remove(notificationQueue, 1)
+            local title = currentInfo.Title or "Notification"
+            local text = currentInfo.Text or ""
+            local duration = currentInfo.Duration or 5
+            local color = currentInfo.Color or Color3.fromRGB(170, 85, 235)
+            
+            local notificationFrame = utility:Create({Type = "Frame", Properties = {
+                Parent = notificationGui,
+                Size = UDim2.new(0, 300, 0, 60),
+                AnchorPoint = Vector2.new(0.5, 0),
+                Position = UDim2.new(0.5, 0, 0, -70), -- Start off-screen (above)
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+                BorderColor3 = Color3.fromRGB(10, 10, 10),
+                BorderSizePixel = 2
+            }})
+            
+            local accent = utility:Create({Type = "Frame", Properties = { Parent = notificationFrame, Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = color, BorderSizePixel = 0 }})
+            utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 0, 20), Position = UDim2.new(0, 5, 0, 5), Font = "Code", Text = title, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, TextSize = 16 }})
+            utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 1, -28), Position = UDim2.new(0, 5, 0, 28), Font = "Code", Text = text, TextColor3 = Color3.fromRGB(200, 200, 200), TextXAlignment = "Left", TextYAlignment = "Top", TextWrapped = true, BackgroundTransparency = 1, TextSize = 14 }})
+            
+            local animInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+            local animIn = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, 10)})
+            local animOut = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, -70)})
+            
+            animIn:Play()
+            animIn.Completed:Wait()
+            
+            local timerAnimInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+            local timerTween = ts:Create(accent, timerAnimInfo, {Size = UDim2.new(0, 0, 0, 4)})
             timerTween:Play()
-            task.wait(data.Time)
-            data:Destroy()
+            
+            task.wait(duration)
+            
+            animOut:Play()
+            animOut.Completed:Wait()
+            notificationFrame:Destroy()
         end
-    end)
-    
-    return data
+        
+        isNotifying = false
+    end)()
 end
-
 
 return library
