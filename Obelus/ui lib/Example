@@ -1,121 +1,145 @@
--- === 加载UI库 ===
-if not getgenv().ObelusLibrary then
-	local LibraryURL = "https://raw.githubusercontent.com/fcsdsss/ui-library/main/Obelus/ui%20lib/source.lua" -- 确保这个URL指向最新的库代码
-	local success, result = pcall(function() return loadstring(game:HttpGet(LibraryURL))() end)
-	if success and result and type(result) == "table" then 
-		getgenv().ObelusLibrary = result 
-	else 
-		warn("Obelus UI Library could not be loaded.", result) 
-		return 
-	end
+-- // Obelus UI Library - v2.0 加载和示例
+
+-- 确保这是在客户端运行的 LocalScript
+if not game:IsLoaded() then
+	game.Loaded:Wait()
 end
 
-local Obelus = getgenv().ObelusLibrary
+local Obelus_UI -- 声明一个变量来存储加载的库
 
--- === 创建UI窗口 ===
-local window = Obelus:Window({ name = "<font color='#FFFFFF'>My Awesome Script</font> | v4.0" })
+-- 使用 pcall 来安全地加载链接，以防链接失效或网络错误
+local success, library = pcall(function()
+	-- 从 GitHub Raw 链接加载 UI 库
+	return loadstring(game:HttpGet("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/Obelus/ui%20lib/source.lua"))()
+end)
 
--- === 创建页面 ===
-local combatPage = window:Page({Name = "Combat"})
-local visualsPage = window:Page({Name = "Visuals"})
-local playerPage = window:Page({Name = "Player"})
-local miscPage = window:Page({Name = "Misc"})
+-- 检查库是否加载成功
+if not success then
+	warn("Obelus UI 库加载失败:", library)
+	return -- 如果加载失败，则停止脚本
+end
 
--- === 填充 Combat 页面 ===
-local combatSectionLeft = combatPage:Section({Name = "General", Side = "Left", size = 280})
-combatSectionLeft:Label({Name = "Main combat features:"})
-local aimAssistToggle = combatSectionLeft:Toggle({Name = "Aim Assist", Default = true})
-local targetPartDropdown = combatSectionLeft:Dropdown({
-	Name = "Target Part",
-	Options = {"Head", "Torso", "HumanoidRootPart", "Closest Part"},
-	Default = "Head",
-	Callback = function(selectedOption)
-		Obelus:Notify({
-			Title = "Target Part Changed",
-			Text = "Now targeting player " .. selectedOption .. ".",
-			Color = Color3.fromRGB(0, 170, 255)
+Obelus_UI = library -- 将加载的库赋值给变量
+
+-- // 创建 UI 示例
+
+-- 1. 创建一个窗口
+-- Name: 窗口顶部显示的标题
+local window = Obelus_UI:Window({
+	Name = "Obelus v2.0 示例"
+})
+
+-- 2. 在窗口中创建一个页面
+-- Name: 页面标签上显示的名称
+local mainPage = window:Page({
+	Name = "主页"
+})
+
+-- 3. 在页面的左侧创建一个分区
+local leftSection = mainPage:Section({
+	Name = "功能区",
+	Side = "Left", -- 指定在左侧
+	Size = 250 -- 分区的高度
+})
+
+-- 4. 在页面的右侧创建另一个分区
+local rightSection = mainPage:Section({
+	Name = "信息区",
+	Side = "Right", -- 指定在右侧
+	Size = 250 -- 分区的高度
+})
+
+-- // 向分区中添加组件
+
+-- [左侧分区]
+
+-- 添加一个标签
+leftSection:Label({
+	Name = "这是一个标签，用于显示文本。"
+})
+
+-- 添加一个开关 (Toggle)
+local exampleToggle = leftSection:Toggle({
+	Name = "示例开关",
+	Default = false, -- 默认状态为关闭
+	Callback = function(state)
+		print("开关状态变为:", state)
+		if state then
+			-- 使用新的通知系统
+			Obelus_UI:Notify({
+				Title = "操作成功",
+				Text = "你打开了开关！",
+				Duration = 3 -- 持续3秒
+			})
+		else
+			Obelus_UI:Notify({
+				Title = "操作成功",
+				Text = "你关闭了开关。",
+				Duration = 3,
+				Color = Color3.fromRGB(255, 80, 80) -- 自定义颜色
+			})
+		end
+	end
+})
+
+-- 添加一个按钮 (Button)
+leftSection:Button({
+	Name = "点击我发送通知",
+	Callback = function()
+		print("按钮被点击了！")
+		-- 使用新的通知系统
+		Obelus_UI:Notify({
+			Title = "按钮提示",
+			Text = "这是一个通过按钮触发的通知。",
+			Duration = 5 -- 持续5秒
 		})
 	end
 })
-combatSectionLeft:Button({Name = "Test Notification", Callback = function()
-	Obelus:Notify({Title = "Test", Text = "This is a test notification."})
-end})
 
-local combatSectionRight = combatPage:Section({Name = "Aim Assist Settings", Side = "Right", size = 280})
-local smoothnessSlider = combatSectionRight:Slider({
-	Name = "Smoothness",
-	Minimum = 0,
-	Maximum = 100,
-	Default = 25,
-	Decimals = 1,
-	Suffix = "%",
+-- 添加一个滑块 (Slider)
+leftSection:Slider({
+	Name = "速度滑块",
+	Default = 5, -- 默认值
+	Minimum = 0, -- 最小值
+	Maximum = 20, -- 最大值
+	Decimals = 0.5, -- 步进值/精度
+	Suffix = " studs/s", -- 值后面显示的后缀
 	Callback = function(value)
-		print("Aim Assist Smoothness set to:", value .. "%")
+		print("滑块的值变为:", value)
 	end
 })
-combatSectionRight:Slider({
-	Name = "FOV Size",
-	Minimum = 10,
-	Maximum = 500,
-	Default = 80,
-	Decimals = 10,
-	Suffix = "px"
+
+-- 添加一个下拉菜单 (Dropdown) - 这是 v2.0 的新功能
+leftSection:Dropdown({
+	Name = "选择一个选项",
+	Values = {"选项 A", "选项 B", "选项 C", "选项 D"}, -- 提供一个值的列表
+	Default = "选项 A", -- 默认选中的值
+	Callback = function(selectedValue)
+		print("你从下拉菜单中选择了:", selectedValue)
+		Obelus_UI:Notify({
+			Title = "选择成功",
+			Text = "你选择了: " .. tostring(selectedValue)
+		})
+	end
 })
 
--- === 填充 Visuals 页面 ===
-local espSection = visualsPage:Section({Name = "Player ESP", Side = "Left", size = 280})
-espSection:Toggle({Name = "Box ESP", Default = true})
-espSection:Toggle({Name = "Name ESP"})
-local targetModeDropdown = espSection:Dropdown({
-	Name = "Target Mode",
-	Options = {"All Players", "Enemies Only", "Friends Only"},
-	Default = "Enemies Only"
-})
-local espDistanceSlider = espSection:Slider({
-	Name = "Max ESP Distance",
-	Minimum = 50,
-	Maximum = 2000,
-	Default = 300,
-	Decimals = 0.02,
-	Suffix = "m"
+
+-- [右侧分区]
+
+rightSection:Label({
+	Name = "欢迎使用 Obelus UI v2.0",
+	Offset = 16 -- 调整左边距
 })
 
--- === 填充 Player 页面 ===
-local playerSection = playerPage:Section({Name = "Movement", Side = "Left", size = 280})
-local walkspeedSlider = playerSection:Slider({
-	Name = "WalkSpeed",
-	Minimum = 16,
-	Maximum = 150,
-	Default = 16,
-	Decimals = 1
-})
-local jumpPowerSlider = playerSection:Slider({
-	Name = "JumpPower",
-	Minimum = 50,
-	Maximum = 250,
-	Default = 50,
-	Decimals = 2
+rightSection:Label({
+	Name = "这个库现在支持从链接加载。",
+	Offset = 16
 })
 
--- === 填充 Misc 页面 ===
-local miscSection = miscPage:Section({Name = "Miscellaneous", Side = "Left", size = 280})
-miscSection:Label({Name = "Other settings and info."})
-miscSection:Toggle({Name = "Streamer Mode (Hides UI)", Default = false})
-miscSection:Button({Name = "Rejoin Server", Callback = function() print("Rejoining...") end})
-miscSection:Button({Name = "Reset All Settings", Callback = function()
-	aimAssistToggle:Set(true)
-	smoothnessSlider:Set(25)
-	walkspeedSlider:Set(16)
-	targetPartDropdown:Set("Head")
-	Obelus:Notify({Title = "Settings Reset", Text = "All values restored to default."})
-end})
-
--- === 设置UI初始状态 ===
-combatPage:Turn(true)
-
-task.wait(1)
-Obelus:Notify({
-	Title = "Script Loaded!",
-	Text = "Welcome! Obelus v4.0 is active.",
-	Duration = 6
+rightSection:Label({
+	Name = "新增了通知和下拉菜单功能。",
+	Offset = 16
 })
+
+-- 默认打开第一个页面
+mainPage:Turn(true)
