@@ -35,7 +35,6 @@ do
 		local connectionInfo = connectionInfo or {}
 		if connectionInfo.Type then
 			local connection = connectionInfo.Type:Connect(connectionInfo.Callback or function() end)
-			-- [FIXED] Correctly add connection to the table for proper cleanup
 			table.insert(obelus.connections, connection)
 			return connection
 		end
@@ -212,7 +211,6 @@ do
             end
 		end})
 
-		-- Global click handler to close active dropdown
 		utility:Connection({Type = uis.InputBegan, Callback = function(input)
 			if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and window.activeDropdown then
 				if not window.activeDropdown.frame:IsAncestorOf(input.GuiObject) then
@@ -269,7 +267,6 @@ do
 				local sectionContentHolder = utility:Create({Type = "ScrollingFrame", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = sectionFrame, Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, 0, 1, 0), ZIndex = 4, AutomaticCanvasSize = "Y", CanvasSize = UDim2.new(0, 0, 0, 0), ScrollBarImageColor3 = Color3.fromRGB(65, 65, 65), ScrollBarThickness = 4, BorderMode = "Inset" }})
 				utility:Create({Type = "UIPadding", Properties = { PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10), Parent = sectionContentHolder }})
 				
-				-- [CRITICAL FIX] Used correct Enum for SortOrder instead of a string
 				utility:Create({Type = "UIListLayout", Properties = {
 					Padding = UDim.new(0, 5),
 					Parent = sectionContentHolder,
@@ -316,10 +313,21 @@ do
 					local buttonFrame = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(45, 45, 45), BorderColor3 = Color3.fromRGB(1, 1, 1), BorderMode = "Inset", BorderSizePixel = 1, Parent = contentHolder, Position = UDim2.new(0, 16, 0, 0), Size = UDim2.new(1, -32, 1, 0) }})
 					local buttonInline = utility:Create({Type = "Frame", Properties = { BackgroundColor3 = Color3.fromRGB(25, 25, 25), BorderSizePixel = 0, Parent = buttonFrame, Position = UDim2.new(0, 1, 0, 1), Size = UDim2.new(1, -2, 1, -2) }})
 					utility:Create({Type = "TextLabel", Properties = { BackgroundTransparency = 1, BorderSizePixel = 0, Parent = contentHolder, Size = UDim2.new(1, -32, 1, 0), Position = UDim2.new(0, 16, 0, 0), Font = "Code", RichText = true, Text = info.Name or info.name or "new button", TextColor3 = Color3.fromRGB(180, 180, 180), TextStrokeTransparency = 0.5, TextSize = 13, TextXAlignment = "Center" }})
-					local originalColor = buttonInline.BackgroundColor3; local pressedColor = Color3.new(originalColor.r * 0.8, originalColor.g * 0.8, originalColor.b * 0.8); local animInfo = TweenInfo.new(0.1)
-					utility:Connection({Type = buttonButton.InputBegan, Callback = function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then ts:Create(buttonInline, animInfo, {BackgroundColor3 = pressedColor}):Play() end end})
-					utility:Connection({Type = buttonButton.InputEnded, Callback = function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then ts:Create(buttonInline, animInfo, {BackgroundColor3 = originalColor}):Play() end end})
-					local connection = utility:Connection({Type = buttonButton.MouseButton1Down, Callback = function() button.callback() end})
+					
+					-- [FIXED] New robust button feedback logic
+					local originalColor = buttonInline.BackgroundColor3
+					local pressedColor = Color3.new(originalColor.r * 0.7, originalColor.g * 0.7, originalColor.b * 0.7)
+					
+					local connection = utility:Connection({Type = buttonButton.MouseButton1Down, Callback = function()
+						-- Immediately change color for feedback
+						buttonInline.BackgroundColor3 = pressedColor
+						-- Run user's function
+						button.callback()
+						-- Wait a moment then revert color
+						task.wait(0.1)
+						buttonInline.BackgroundColor3 = originalColor
+					end})
+
 					function button:Remove() contentHolder:Remove(); utility:RemoveConnection({Connection = connection}); button = nil end
 					return button
 				end
@@ -393,7 +401,8 @@ do
 						utility:Create({Type = "TextLabel", Properties = { Parent = optionButton, Size = UDim2.new(1, -10, 1, 0), Position = UDim2.new(0, 5, 0, 0), Font = "Code", Text = optionName, TextColor3 = Color3.fromRGB(180, 180, 180), TextSize = 13, TextXAlignment = "Left", BackgroundTransparency = 1 }})
 						utility:Connection({Type = optionButton.MouseEnter, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45) end})
 						utility:Connection({Type = optionButton.MouseLeave, Callback = function() optionButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25) end})
-						utility:Connection({Type = optionButton.MouseButton1Click, Callback = function() dropdown:Set(optionName, true); dropdown:Close() end})
+						-- [FIXED] Changed to .Activated for mobile touch compatibility
+						utility:Connection({Type = optionButton.Activated, Callback = function() dropdown:Set(optionName, true); dropdown:Close() end})
 					end
 					
 					function dropdown:Close() if not dropdown.open then return end; toggleDropdownAnim(false); window.activeDropdown = nil end
@@ -410,7 +419,7 @@ do
 						end
 					end
 					function dropdown:Remove() contentHolder:Remove(); dropdown = nil end
-					dropdown.frame = dropdownButton -- For the global click handler
+					dropdown.frame = dropdownButton
 					return dropdown
 				end
 				
@@ -444,14 +453,24 @@ function library:Notify(info)
 			local duration = currentInfo.Duration or 5
 			local color = currentInfo.Color or Color3.fromRGB(170, 85, 235)
 			
-			local notificationFrame = utility:Create({Type = "Frame", Properties = { Parent = notificationGui, Size = UDim2.new(0, 300, 0, 60), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, -70), BackgroundColor3 = Color3.fromRGB(30, 30, 30), BorderColor3 = Color3.fromRGB(10, 10, 10), BorderSizePixel = 2 }})
+			-- [CHANGED] Notification position and size
+			local notificationFrame = utility:Create({Type = "Frame", Properties = {
+				Parent = notificationGui,
+				Size = UDim2.new(0, 250, 0, 50), -- Smaller size
+				AnchorPoint = Vector2.new(1, 1), -- Anchor to bottom-right
+				Position = UDim2.new(1, -10, 1, 60), -- Start off-screen (below)
+				BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+				BorderColor3 = Color3.fromRGB(10, 10, 10),
+				BorderSizePixel = 2
+			}})
 			utility:Create({Type = "Frame", Properties = { Parent = notificationFrame, Size = UDim2.new(1, 0, 0, 4), BackgroundColor3 = color, BorderSizePixel = 0 }})
-			utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 0, 20), Position = UDim2.new(0, 5, 0, 5), Font = "Code", Text = title, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, TextSize = 16 }})
-			utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 1, -28), Position = UDim2.new(0, 5, 0, 28), Font = "Code", Text = text, TextColor3 = Color3.fromRGB(200, 200, 200), TextXAlignment = "Left", TextYAlignment = "Top", TextWrapped = true, BackgroundTransparency = 1, TextSize = 14 }})
+			utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 0, 18), Position = UDim2.new(0, 5, 0, 4), Font = "Code", Text = title, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, TextSize = 14 }})
+			utility:Create({Type = "TextLabel", Properties = { Parent = notificationFrame, Size = UDim2.new(1, -10, 1, -24), Position = UDim2.new(0, 5, 0, 24), Font = "Code", Text = text, TextColor3 = Color3.fromRGB(200, 200, 200), TextXAlignment = "Left", TextYAlignment = "Top", TextWrapped = true, BackgroundTransparency = 1, TextSize = 12 }})
 			
 			local animInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-			local animIn = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, 10)})
-			local animOut = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(0.5, 0, 0, -70)})
+			-- [CHANGED] Animation goals for bottom-right positioning
+			local animIn = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(1, -10, 1, -10)})
+			local animOut = ts:Create(notificationFrame, animInfo, {Position = UDim2.new(1, -10, 1, 60)})
 			
 			animIn:Play()
 			animIn.Completed:Wait()
