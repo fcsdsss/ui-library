@@ -1,0 +1,131 @@
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/fcsdsss/ui-library/refs/heads/main/Venus/source", true))()
+
+local window = library:Load({
+    Name = "Venus - New Example", 
+    Theme = "Dark",
+    SizeX = 420,
+    SizeY = 390
+})
+
+local tab_main = window:Tab("Main")
+
+local section_left = tab_main:Section({Name = "Controls & Toggles", column = 1})
+
+section_left:Label("这是一个标签，用于提供信息。")
+
+local my_button = section_left:Button({
+    Name = "执行操作", 
+    Callback = function()
+        print("按钮已被点击！")
+    end
+})
+
+local my_toggle = section_left:Toggle({
+    Name = "启用功能", 
+    Flag = "MainFeatureToggle",
+    callback = function(state)
+        print("功能状态已切换为: " .. tostring(state))
+    end
+})
+
+local section_right = tab_main:Section({Name = "Inputs & Settings", column = 2})
+
+local my_slider = section_right:Slider({
+    Name = "灵敏度", 
+    Min = 0, 
+    Max = 100, 
+    Default = 75, 
+    Decimals = 1,
+    Flag = "SensitivitySlider", 
+    Callback = function(value)
+        print("滑块值已更新: " .. value)
+    end
+})
+
+local my_box = section_right:Box({
+    Name = "输入你的名字...", 
+    Flag = "PlayerNameBox", 
+    Callback = function(text)
+        print("输入框内容已提交: " .. text)
+    end
+})
+
+local my_keybind = section_right:Keybind({
+    Name = "快捷键", 
+    Default = Enum.KeyCode.E,  
+    Flag = "ActionKeybind", 
+    Callback = function(key)
+       print("快捷键被按下: " .. tostring(key))
+    end
+})
+
+local tab_visuals = window:Tab("Visuals")
+
+local section_visuals = tab_visuals:Section({Name = "ESP Settings", column = 1})
+
+local esp_mode_dropdown = section_visuals:Dropdown({
+    Default = "Box", 
+    Content = {"Box", "Corner", "Head Dot"}, 
+    MultiChoice = false,
+    Flag = "EspModeDropdown", 
+    Callback = function(option)
+       print("ESP 模式已选择: " .. tostring(option))
+    end
+})
+
+local my_color_picker = section_visuals:ColorPicker({
+    Name = "Box 颜色", 
+    Default = Color3.fromRGB(0, 255, 128),
+    Flag = "EspBoxColor", 
+    Callback = function(color)
+       print("颜色已选择 (RGB):", math.floor(color.r * 255), math.floor(color.g * 255), math.floor(color.b * 255))
+    end
+})
+
+local section_extras = tab_visuals:Section({Name = "Extra Visuals", column = 2})
+
+local tracer_keybind = section_extras:ToggleKeybind({
+    Name = "显示轨迹", 
+    Default = Enum.KeyCode.T,
+    KeybindFlag = "TracerKeybind", 
+    ToggleFlag = "TracerToggle",
+    ToggleCallback = function(state)
+       print("轨迹显示状态: " .. tostring(state))
+    end,
+    KeybindCallback = function(key)
+       print("轨迹显示快捷键被触发")
+    end
+})
+
+local fov_color_toggle = section_extras:ToggleColorPicker({
+    Name = "显示FOV圈", 
+    Default = Color3.fromRGB(255, 255, 255), 
+    ToggleFlag = "FovCircleToggle", 
+    ColorPickerFlag = "FovCircleColor", 
+    ToggleCallback = function(state)
+       print("FOV圈显示状态: " .. tostring(state))
+    end,
+    ColorPickerCallback = function(color)
+       print("FOV圈颜色已更新")
+    end
+})
+
+wait(5)
+my_toggle:Toggle(true)
+my_slider:Set(50)
+my_box:Set("Gemini")
+my_color_picker:SetHex("#FF00FF")
+
+local section_debug = tab_main:Section({Name = "Debug", column = 1})
+section_debug:Button({
+    Name = "打印所有Flags",
+    Callback = function()
+        print("========== 当前所有Flags的值 ==========")
+        for flag, value in pairs(library.flags) do
+            print(tostring(flag) .. ": " .. tostring(value))
+        end
+        print("========================================")
+    end
+})
+
+tab_main:Open()
