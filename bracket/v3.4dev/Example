@@ -17,8 +17,8 @@ local Window = Bracket:Window({
     Name = "My Awesome UI",
     Enabled = true,
     Color = Color3.fromRGB(100, 125, 255),
-    Size = UDim2.new(0, 500, 0, 420),
-    Position = UDim2.new(0.5, -250, 0.5, -210)
+    Size = UDim2.new(0, 420, 0, 390),
+    Position = UDim2.new(0.5, -120, 0.5, -120)
 })
 
 -- 5. 创建主标签页
