@@ -113,7 +113,7 @@ local fov_color_toggle = section_extras:ToggleColorPicker({
 wait(5)
 my_toggle:Toggle(true)
 my_slider:Set(50)
-my_box:Set("Gemini")
+my_box:Set("请输入")
 my_color_picker:SetHex("#FF00FF")
 
 local section_debug = tab_main:Section({Name = "Debug", column = 1})
