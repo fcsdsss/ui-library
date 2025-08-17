@@ -14,12 +14,6 @@ Bracket:CreateResetButton({
     Position = UDim2.new(0, 15, 0, 60) -- 放在开关按钮下方
 })
 
--- 3. 创建一个独立的水印
-local Watermark = Bracket:Watermark({
-    Title = "Bracket v3.4dev Showcase",
-    Flag = "UI/Watermark/Position",
-    Enabled = true
-})
 
 -- 4. 发送欢迎通知
 Bracket:PushNotification({Title = "Bracket Showcase", Description = "所有功能已加载。按 RightShift 或点击按钮开关UI。", Duration = 10})
