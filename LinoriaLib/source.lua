@@ -3432,14 +3432,29 @@ end
 Players.PlayerAdded:Connect(OnPlayerChange)
 Players.PlayerRemoving:Connect(OnPlayerChange)
 
-local toggleButton = Library:Create('TextButton', {
-    Name = 'ToggleUI',
+local borderWidth = 2
+
+local borderFrame = Library:Create('Frame', {
+    Name = 'ToggleUI_Border',
     Parent = ScreenGui,
     Size = UDim2.fromOffset(50, 50),
     Position = UDim2.new(1, -60, 0, 10),
+    BackgroundColor3 = Color3.new(1, 1, 1),
+    BorderSizePixel = 0,
+    ZIndex = 998
+})
+
+local borderCorner = Instance.new("UICorner")
+borderCorner.CornerRadius = UDim.new(0, 8)
+borderCorner.Parent = borderFrame
+
+local toggleButton = Library:Create('TextButton', {
+    Name = 'ToggleUI',
+    Parent = borderFrame,
+    Size = UDim2.new(1, -2 * borderWidth, 1, -2 * borderWidth),
+    Position = UDim2.fromOffset(borderWidth, borderWidth),
     BackgroundColor3 = Color3.new(0, 0, 0),
-    BorderColor3 = Color3.new(255, 255, 255),
-    BorderSizePixel = 3,
+    BorderSizePixel = 0,
     Text = "eup",
     Font = Library.Font,
     TextColor3 = Color3.new(1, 1, 1),
@@ -3447,9 +3462,9 @@ local toggleButton = Library:Create('TextButton', {
     ZIndex = 999
 })
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = toggleButton
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, borderCorner.CornerRadius.Offset - borderWidth)
+buttonCorner.Parent = toggleButton
 
 toggleButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -3457,7 +3472,7 @@ toggleButton.InputBegan:Connect(function(input)
     end
 end)
 
-Library:MakeDraggable(toggleButton)
+Library:MakeDraggable(borderFrame)
 
 getgenv().Library = Library
 return Library
