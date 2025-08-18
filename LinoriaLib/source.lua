@@ -161,7 +161,7 @@ function Library:MakeDraggable(Instance, Cutoff)
                 Input.Position.Y - Instance.AbsolutePosition.Y
             )
 
-            if objPos.Y > (Cutoff or 40) then
+            if Cutoff and objPos.Y > Cutoff then
                 return
             end
 
@@ -3447,12 +3447,17 @@ local toggleButton = Library:Create('TextButton', {
     ZIndex = 999
 })
 
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = toggleButton
+
 toggleButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         Library.Toggle()
     end
 end)
 
+Library:MakeDraggable(toggleButton)
 
 getgenv().Library = Library
 return Library
