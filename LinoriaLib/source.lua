@@ -3434,45 +3434,54 @@ Players.PlayerRemoving:Connect(OnPlayerChange)
 
 local borderWidth = 2
 
-local borderFrame = Library:Create('Frame', {
-    Name = 'ToggleUI_Border',
+local buttonContainer = Library:Create('TextButton', {
+    Name = 'ToggleUI_Container',
     Parent = ScreenGui,
     Size = UDim2.fromOffset(50, 50),
     Position = UDim2.new(1, -60, 0, 10),
     BackgroundColor3 = Color3.new(1, 1, 1),
     BorderSizePixel = 0,
-    ZIndex = 998
+    ZIndex = 998,
+    Text = "",
+    AutoButtonColor = false
 })
 
-local borderCorner = Instance.new("UICorner")
-borderCorner.CornerRadius = UDim.new(0, 8)
-borderCorner.Parent = borderFrame
+local containerCorner = Instance.new("UICorner")
+containerCorner.CornerRadius = UDim.new(0, 8)
+containerCorner.Parent = buttonContainer
 
-local toggleButton = Library:Create('TextButton', {
-    Name = 'ToggleUI',
-    Parent = borderFrame,
+local innerBg = Library:Create('Frame', {
+    Name = 'InnerBackground',
+    Parent = buttonContainer,
     Size = UDim2.new(1, -2 * borderWidth, 1, -2 * borderWidth),
     Position = UDim2.fromOffset(borderWidth, borderWidth),
     BackgroundColor3 = Color3.new(0, 0, 0),
     BorderSizePixel = 0,
+    ZIndex = 999
+})
+
+local innerCorner = Instance.new("UICorner")
+innerCorner.CornerRadius = UDim.new(0, containerCorner.CornerRadius.Offset - borderWidth)
+innerCorner.Parent = innerBg
+
+local textLabel = Library:Create('TextLabel', {
+    Name = 'Label',
+    Parent = innerBg,
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
     Text = "eup",
     Font = Library.Font,
     TextColor3 = Color3.new(1, 1, 1),
     TextSize = 20,
-    ZIndex = 999
+    ZIndex = 1000
 })
 
-local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim.new(0, borderCorner.CornerRadius.Offset - borderWidth)
-buttonCorner.Parent = toggleButton
+Library:MakeDraggable(buttonContainer)
 
-toggleButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        Library.Toggle()
-    end
+buttonContainer.MouseButton1Click:Connect(function()
+    Library.Toggle()
 end)
-
-Library:MakeDraggable(borderFrame)
 
 getgenv().Library = Library
 return Library
+
