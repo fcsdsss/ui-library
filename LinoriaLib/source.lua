@@ -3445,7 +3445,6 @@ local toggleButton = Library:Create('TextButton', {
     TextColor3 = Color3.new(1, 1, 1),
     TextSize = 20,
     ZIndex = 999
-    BorderSizePixel = 0
 })
 
 local corner = Instance.new("UICorner")
