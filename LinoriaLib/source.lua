@@ -3435,18 +3435,24 @@ Players.PlayerRemoving:Connect(OnPlayerChange)
 local toggleButton = Library:Create('TextButton', {
     Name = 'ToggleUI',
     Parent = ScreenGui,
-    Size = UDim2.fromOffset(80, 40),
-    Position = UDim2.new(1, -90, 0, 10),
-    BackgroundColor3 = Library.AccentColor,
-    BorderColor3 = Library.OutlineColor,
-    Text = 'Toggle',
+    Size = UDim2.fromOffset(50, 50),
+    Position = UDim2.new(1, -60, 0, 10),
+    BackgroundColor3 = Color3.new(0, 0, 0),
+    BorderColor3 = Color3.new(1, 1, 1),
+    BorderSizePixel = 1,
+    Text = "eup",
     Font = Library.Font,
-    TextColor3 = Library.FontColor,
-    TextSize = 16,
+    TextColor3 = Color3.new(1, 1, 1),
+    TextSize = 20,
     ZIndex = 999
 })
 
-toggleButton.Activated:Connect(Library.Toggle)
+toggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        Library.Toggle()
+    end
+end)
+
 
 getgenv().Library = Library
 return Library
